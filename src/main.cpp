@@ -47,7 +47,7 @@ glm::vec3 g_light(2, 6, 6);
 float updateDir = 0.5;
 
 //camera control - you can ignore - what matters is eye location and view matrix
-double g_phi, g_theta;
+float g_phi, g_theta;
 float g_Camtrans = -2.5;
 vec3 view = vec3(0, 0, 1);
 vec3 strafe = vec3(1, 0, 0);
@@ -120,52 +120,52 @@ void SetMaterial(int i) {
 	glUseProgram(ShadeProg);
 	switch (i) {
 	case 0: //shiny blue plastic
-		glUniform3f(h_uMatAmb, 0.02, 0.04, 0.2);
-		glUniform3f(h_uMatDif, 0.0, 0.16, 0.9);
-		glUniform3f(h_uMatSpec, 0.14, 0.2, 0.8);
-		glUniform1f(h_uMatShine, 120.0);
+		glUniform3f(h_uMatAmb, 0.02f, 0.04f, 0.2f);
+		glUniform3f(h_uMatDif, 0.0f, 0.16f, 0.9f);
+		glUniform3f(h_uMatSpec, 0.14f, 0.2f, 0.8f);
+		glUniform1f(h_uMatShine, 120.0f);
 		break;
 	case 1: // flat grey
-		glUniform3f(h_uMatAmb, 0.13, 0.13, 0.14);
-		glUniform3f(h_uMatDif, 0.3, 0.3, 0.4);
-		glUniform3f(h_uMatSpec, 0.3, 0.3, 0.4);
-		glUniform1f(h_uMatShine, 4.0);
+		glUniform3f(h_uMatAmb, 0.13f, 0.13f, 0.14f);
+		glUniform3f(h_uMatDif, 0.3f, 0.3f, 0.4f);
+		glUniform3f(h_uMatSpec, 0.3f, 0.3f, 0.4f);
+		glUniform1f(h_uMatShine, 4.0f);
 		break;
 	case 2: //brass
-		glUniform3f(h_uMatAmb, 0.3294, 0.2235, 0.02745);
-		glUniform3f(h_uMatDif, 0.7804, 0.5686, 0.11373);
-		glUniform3f(h_uMatSpec, 0.9922, 0.941176, 0.80784);
-		glUniform1f(h_uMatShine, 27.9);
+		glUniform3f(h_uMatAmb, 0.3294f, 0.2235f, 0.02745f);
+		glUniform3f(h_uMatDif, 0.7804f, 0.5686f, 0.11373f);
+		glUniform3f(h_uMatSpec, 0.9922f, 0.941176f, 0.80784f);
+		glUniform1f(h_uMatShine, 27.9f);
 		break;
 	case 3: //copper
-		glUniform3f(h_uMatAmb, 0.1913, 0.0735, 0.0225);
-		glUniform3f(h_uMatDif, 0.7038, 0.27048, 0.0828);
-		glUniform3f(h_uMatSpec, 0.257, 0.1376, 0.08601);
-		glUniform1f(h_uMatShine, 12.8);
+		glUniform3f(h_uMatAmb, 0.1913f, 0.0735f, 0.0225f);
+		glUniform3f(h_uMatDif, 0.7038f, 0.27048f, 0.0828f);
+		glUniform3f(h_uMatSpec, 0.257f, 0.1376f, 0.08601f);
+		glUniform1f(h_uMatShine, 12.8f);
 		break;
 	case 4: // flat grey
-		glUniform3f(h_uMatAmb, 0.13, 0.13, 0.14);
-		glUniform3f(h_uMatDif, 0.3, 0.3, 0.4);
-		glUniform3f(h_uMatSpec, 0.3, 0.3, 0.4);
-		glUniform1f(h_uMatShine, 4.0);
+		glUniform3f(h_uMatAmb, 0.13f, 0.13f, 0.14f);
+		glUniform3f(h_uMatDif, 0.3f, 0.3f, 0.4f);
+		glUniform3f(h_uMatSpec, 0.3f, 0.3f, 0.4f);
+		glUniform1f(h_uMatShine, 4.0f);
 		break;
 	case 5: //shadow
-		glUniform3f(h_uMatAmb, 0.12, 0.12, 0.12);
-		glUniform3f(h_uMatDif, 0.0, 0.0, 0.0);
-		glUniform3f(h_uMatSpec, 0.0, 0.0, 0.0);
+		glUniform3f(h_uMatAmb, 0.12f, 0.12f, 0.12f);
+		glUniform3f(h_uMatDif, 0.0f, 0.0f, 0.0f);
+		glUniform3f(h_uMatSpec, 0.0f, 0.0f, 0.0f);
 		glUniform1f(h_uMatShine, 0);
 		break;
 	case 6: //gold
-		glUniform3f(h_uMatAmb, 0.09, 0.07, 0.08);
-		glUniform3f(h_uMatDif, 0.91, 0.2, 0.91);
-		glUniform3f(h_uMatSpec, 1.0, 0.7, 1.0);
-		glUniform1f(h_uMatShine, 100.0);
+		glUniform3f(h_uMatAmb, 0.09f, 0.07f, 0.08f);
+		glUniform3f(h_uMatDif, 0.91f, 0.2f, 0.91f);
+		glUniform3f(h_uMatSpec, 1.0f, 0.7f, 1.0f);
+		glUniform1f(h_uMatShine, 100.0f);
 		break;
 	case 7: //green
-		glUniform3f(h_uMatAmb, 0.0, 0.07, 0.0);
-		glUniform3f(h_uMatDif, 0.1, 0.91, 0.3);
+		glUniform3f(h_uMatAmb, 0.0f, 0.07f, 0.0f);
+		glUniform3f(h_uMatDif, 0.1f, 0.91f, 0.3f);
 		glUniform3f(h_uMatSpec, 0, 0, 0);
-		glUniform1f(h_uMatShine, 0.0);
+		glUniform1f(h_uMatShine, 0.0f);
 		break;
 	}
 }
@@ -515,19 +515,19 @@ void initGL()
 	srand(time(NULL));
 	//allocate the transforms for the different models
 	for (int i = 0; i < 10; i++) {
-		tx = 0.2 + Wscale * (static_cast <float> (rand()) / static_cast <float> (RAND_MAX)) - Wscale / 1.0;
-		tz = 0.2 + Wscale * (static_cast <float> (rand()) / static_cast <float> (RAND_MAX)) - Wscale / 1.0;
+		tx = 0.2f + Wscale * (static_cast <float> (rand()) / static_cast <float> (RAND_MAX)) - Wscale / 1.0f;
+		tz = 0.2f + Wscale * (static_cast <float> (rand()) / static_cast <float> (RAND_MAX)) - Wscale / 1.0f;
 		s = (static_cast <float> (rand()) / static_cast <float> (RAND_MAX));
 		r = 360 * (static_cast <float> (rand()) / static_cast <float> (RAND_MAX));
 		g_transN[i] = vec3(tx, 0, tz);
 		g_scaleN[i] = 1.0;
 		g_rotN[i] = r;
-		tx = 0.1 + Wscale * (static_cast <float> (rand()) / static_cast <float> (RAND_MAX)) - Wscale / 2.0;
-		tz = 0.1 + Wscale * (static_cast <float> (rand()) / static_cast <float> (RAND_MAX)) - Wscale / 2.0;
+		tx = 0.1f + Wscale * (static_cast <float> (rand()) / static_cast <float> (RAND_MAX)) - Wscale / 2.0f;
+		tz = 0.1f + Wscale * (static_cast <float> (rand()) / static_cast <float> (RAND_MAX)) - Wscale / 2.0f;
 		s = (static_cast <float> (rand()) / static_cast <float> (RAND_MAX));
-		r = 360 * (static_cast <float> (rand()) / static_cast <float> (RAND_MAX));
+		r = 360.f * (static_cast <float> (rand()) / static_cast <float> (RAND_MAX));
 		g_transS[i] = vec3(tx, 0, tz);
-		g_scaleS[i] = 1.0;
+		g_scaleS[i] = 1.0f;
 		g_rotS[i] = r;
 		g_mat_ids[i] = i % 4;
 		g_ang[i] = 0;
@@ -691,7 +691,7 @@ int ViewFrustCull(vec3 center, float radius) {
 
 
 /* code to draw the scene */
-void drawScene(float PmatID) {
+void drawScene(int PmatID) {
 
 	int nIndices;
 
@@ -816,11 +816,11 @@ void mouse_callback(GLFWwindow* window, int but, int action, int mods) {
 void scroll_callback(GLFWwindow* window, double deltaX, double deltaY) {
 	vec3 diff, newV;
 	//cout << "xDel + yDel " << deltaX << " " << deltaY << endl;
-	g_theta += deltaX;
-	g_phi += deltaY;
-	newV.x = cosf(g_phi*(3.14 / 180.0))*cosf(g_theta*(3.14 / 180.0));
-	newV.y = -1.0*sinf(g_phi*(3.14 / 180.0));
-	newV.z = 1.0*cosf(g_phi*(3.14 / 180.0))*cosf((90.0 - g_theta)*(3.14 / 180.0));
+	g_theta += (float) deltaX;
+	g_phi += (float) deltaY;
+	newV.x = cosf(g_phi*(3.14f / 180.0f))*cosf(g_theta*(3.14f / 180.0f));
+	newV.y = -1.0f*sinf(g_phi*(3.14f / 180.0f));
+	newV.z = 1.0f*cosf(g_phi*(3.14f / 180.0f))*cosf((90.0f - g_theta)*(3.14f / 180.0f));
 	diff.x = (g_lookAt.x - g_eye.x) - newV.x;
 	diff.y = (g_lookAt.y - g_eye.y) - newV.y;
 	diff.z = (g_lookAt.z - g_eye.z) - newV.z;
@@ -833,7 +833,7 @@ void scroll_callback(GLFWwindow* window, double deltaX, double deltaY) {
 
 void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods)
 {
-	float speed = 0.2;
+	float speed = 0.2f;
 
 	if (key == GLFW_KEY_A && action == GLFW_PRESS) {
 		g_eye -= speed * strafe;
