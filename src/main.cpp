@@ -637,8 +637,9 @@ public:
 
 	/* helper function to compute distance to the plane */
 	/* TODO: fill in */
-	float DistToPlane(float A, float B, float C, float D, vec3 point) {
-		return (A*point.x + B * point.y + C * point.z + D);
+	float DistToPlane(float A, float B, float C, float D, vec3 point)
+	{
+		return 0.f;
 	}
 
 	/* Actual cull on planes */
@@ -647,9 +648,11 @@ public:
 
 		float dist;
 
-		if (CULL) {
+		if (CULL)
+		{
 			cout << "testing against all planes" << endl;
-			for (int i = 0; i < 6; i++) {
+			for (int i = 0; i < 6; i++)
+			{
 				dist = DistToPlane(planes[i].x, planes[i].y, planes[i].z, planes[i].w, center);
 				//test against each plane
 
@@ -657,7 +660,8 @@ public:
 			}
 			return 0;
 		}
-		else {
+		else
+		{
 			return 0;
 		}
 	}
