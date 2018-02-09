@@ -81,7 +81,6 @@
     <ClInclude Include="src\GLSL.h" />
     <ClInclude Include="src\Program.h" />
     <ClInclude Include="src\WindowManager.h" />
-    <ClInclude Include="stb_image.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
