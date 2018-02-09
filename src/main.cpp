@@ -430,14 +430,14 @@ public:
 		glm::vec3 edge1, edge2, norm;
 		int idx1, idx2, idx3;
 		//for every vertex initialize the vertex normal to 0
-		for (int j = 0; j < shape[0].mesh.positions.size() / 3; j++) {
+		for (size_t j = 0; j < shape[0].mesh.positions.size() / 3; j++) {
 			norBuf.push_back(0);
 			norBuf.push_back(0);
 			norBuf.push_back(0);
 		}
 		//process the mesh and compute the normals - for every face
 		//add its normal to its associated vertex
-		for (int i = 0; i < shape[0].mesh.indices.size() / 3; i++) {
+		for (size_t i = 0; i < shape[0].mesh.indices.size() / 3; i++) {
 			idx1 = shape[0].mesh.indices[3 * i + 0];
 			idx2 = shape[0].mesh.indices[3 * i + 1];
 			idx3 = shape[0].mesh.indices[3 * i + 2];
@@ -554,21 +554,19 @@ public:
 		glEnable(GL_DEPTH_TEST);
 		glPointSize(18);
 
-		float tx, tz, s, r;
+		float tx, tz, r;
 		float Wscale = 18.0;
 		srand(1234);
 		//allocate the transforms for the different models
 		for (int i = 0; i < 10; i++) {
 			tx = 0.2f + Wscale * (static_cast <float> (rand()) / static_cast <float> (RAND_MAX)) - Wscale / 1.0f;
 			tz = 0.2f + Wscale * (static_cast <float> (rand()) / static_cast <float> (RAND_MAX)) - Wscale / 1.0f;
-			s = (static_cast <float> (rand()) / static_cast <float> (RAND_MAX));
 			r = 360 * (static_cast <float> (rand()) / static_cast <float> (RAND_MAX));
 			g_transN[i] = vec3(tx, 0, tz);
 			g_scaleN[i] = 1.0;
 			g_rotN[i] = r;
 			tx = 0.1f + Wscale * (static_cast <float> (rand()) / static_cast <float> (RAND_MAX)) - Wscale / 2.0f;
 			tz = 0.1f + Wscale * (static_cast <float> (rand()) / static_cast <float> (RAND_MAX)) - Wscale / 2.0f;
-			s = (static_cast <float> (rand()) / static_cast <float> (RAND_MAX));
 			r = 360.f * (static_cast <float> (rand()) / static_cast <float> (RAND_MAX));
 			g_transS[i] = vec3(tx, 0, tz);
 			g_scaleS[i] = 1.0f;
@@ -850,8 +848,6 @@ public:
 
 	void keyCallback(GLFWwindow* window, int key, int scancode, int action, int mods)
 	{
-		float speed = 0.2f;
-
 		switch (key)
 		{
 		case GLFW_KEY_W:
