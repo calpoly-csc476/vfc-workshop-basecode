@@ -26,6 +26,7 @@
 #include "GLSL.h"
 #include "Program.h"
 #include "WindowManager.h"
+#include "Shape.h"
 
 
 using namespace std;
@@ -37,6 +38,8 @@ class Application : public EventCallbacks
 public:
 
 	std::shared_ptr<Program> prog;
+	std::shared_ptr<Shape> nefertitiShape;
+	std::shared_ptr<Shape> sphereShape;
 
 	void init(const std::string& resourceDirectory)
 	{
@@ -44,9 +47,21 @@ public:
 
 		glEnable(GL_BLEND);
 		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-		loadShapes(RESOURCE_DIR + "/Nefertiti-10k.obj", nefer);
-		loadShapes(RESOURCE_DIR + "/sphere.obj", sphere);
+
+
 		initGL();
+
+		// Initialize the obj mesh VBOs etc
+		nefertitiShape = make_shared<Shape>();
+		nefertitiShape->loadMesh(resourceDirectory + "/Nefertiti-10K.obj");
+		nefertitiShape->resize();
+		nefertitiShape->init();
+
+		sphereShape = make_shared<Shape>();
+		sphereShape->loadMesh(resourceDirectory + "/sphere.obj");
+		sphereShape->resize();
+		sphereShape->init();
+
 
 		// Initialize the GLSL program.
 		prog = make_shared<Program>();
@@ -69,25 +84,16 @@ public:
 		prog->addUniform("UsColor");
 		prog->addUniform("Ushine");
 
-		prog->addAttribute("aPosition");
-		prog->addAttribute("aNormal");
+		prog->addAttribute("vertPos");
+		prog->addAttribute("vertNor");
 
 		glClearColor(0.6f, 0.6f, 0.8f, 1.0f);
-
-		glGenVertexArrays(1, &VertexArrayID);
-		glBindVertexArray(VertexArrayID);
 	}
 
 	WindowManager * windowManager = nullptr;
 
 	string RESOURCE_DIR = ""; // Where the resources are loaded from
 
-	GLuint VertexArrayID;
-
-	//main geometry for program
-	vector<tinyobj::shape_t> nefer;
-	vector<tinyobj::material_t> materials;
-	vector<tinyobj::shape_t> sphere;
 
 	//global used to control culling or not for sub-window views
 	int CULL = 1;
@@ -107,41 +113,10 @@ public:
 	int g_mat_ids[10];
 	float g_ang[10];
 
-	GLuint posBufObjB = 0;
-	GLuint norBufObjB = 0;
-	GLuint indBufObjB = 0;
 
-	GLuint posBufObjS = 0;
-	GLuint norBufObjS = 0;
-	GLuint indBufObjS = 0;
-
+	GLuint VertexArrayID;
 	GLuint posBufObjG = 0;
 	GLuint norBufObjG = 0;
-
-
-	int printOglError(const char *file, int line) {
-		/* Returns 1 if an OpenGL error occurred, 0 otherwise. */
-		GLenum glErr;
-		int    retCode = 0;
-
-		glErr = glGetError();
-		while (glErr != GL_NO_ERROR)
-		{
-			std::string error;
-			switch (glErr) {
-			case GL_INVALID_OPERATION:      error = "INVALID_OPERATION";      break;
-			case GL_INVALID_ENUM:           error = "INVALID_ENUM";           break;
-			case GL_INVALID_VALUE:          error = "INVALID_VALUE";          break;
-			case GL_OUT_OF_MEMORY:          error = "OUT_OF_MEMORY";          break;
-			case GL_INVALID_FRAMEBUFFER_OPERATION:  error = "INVALID_FRAMEBUFFER_OPERATION";  break;
-			}
-
-			printf("glError in file %s @ line %d: %s\n", file, line, error.c_str());
-			retCode = 1;
-			glErr = glGetError();
-		}
-		return retCode;
-	}
 
 	/* helper function to change material attributes */
 	void SetMaterial(int i) {
@@ -245,91 +220,15 @@ public:
 		CHECKED_GL_CALL(glUniformMatrix4fv(prog->getUniform("uModelMatrix"), 1, GL_FALSE, glm::value_ptr(m)));
 	}
 
-	//Given a vector of shapes which has already been read from an obj file
-	// resize all vertices to the range [-1, 1]
-	void resize_obj(std::vector<tinyobj::shape_t> &shapes) {
-		float minX, minY, minZ;
-		float maxX, maxY, maxZ;
-		float scaleX, scaleY, scaleZ;
-		float shiftX, shiftY, shiftZ;
-		float epsilon = 0.001;
-
-		minX = minY = minZ = 1.1754E+38F;
-		maxX = maxY = maxZ = -1.1754E+38F;
-
-		//Go through all vertices to determine min and max of each dimension
-		for (size_t i = 0; i < shapes.size(); i++) {
-			for (size_t v = 0; v < shapes[i].mesh.positions.size() / 3; v++) {
-				if (shapes[i].mesh.positions[3 * v + 0] < minX) minX = shapes[i].mesh.positions[3 * v + 0];
-				if (shapes[i].mesh.positions[3 * v + 0] > maxX) maxX = shapes[i].mesh.positions[3 * v + 0];
-
-				if (shapes[i].mesh.positions[3 * v + 1] < minY) minY = shapes[i].mesh.positions[3 * v + 1];
-				if (shapes[i].mesh.positions[3 * v + 1] > maxY) maxY = shapes[i].mesh.positions[3 * v + 1];
-
-				if (shapes[i].mesh.positions[3 * v + 2] < minZ) minZ = shapes[i].mesh.positions[3 * v + 2];
-				if (shapes[i].mesh.positions[3 * v + 2] > maxZ) maxZ = shapes[i].mesh.positions[3 * v + 2];
-			}
-		}
-		//From min and max compute necessary scale and shift for each dimension
-		float maxExtent, xExtent, yExtent, zExtent;
-		xExtent = maxX - minX;
-		yExtent = maxY - minY;
-		zExtent = maxZ - minZ;
-		if (xExtent >= yExtent && xExtent >= zExtent) {
-			maxExtent = xExtent;
-		}
-		if (yExtent >= xExtent && yExtent >= zExtent) {
-			maxExtent = yExtent;
-		}
-		if (zExtent >= xExtent && zExtent >= yExtent) {
-			maxExtent = zExtent;
-		}
-		scaleX = 2.0 / maxExtent;
-		shiftX = minX + (xExtent / 2.0);
-		scaleY = 2.0 / maxExtent;
-		shiftY = minY + (yExtent / 2.0);
-		scaleZ = 2.0 / maxExtent;
-		shiftZ = minZ + (zExtent) / 2.0;
-
-		//Go through all verticies shift and scale them
-		for (size_t i = 0; i < shapes.size(); i++) {
-			for (size_t v = 0; v < shapes[i].mesh.positions.size() / 3; v++) {
-				shapes[i].mesh.positions[3 * v + 0] = (shapes[i].mesh.positions[3 * v + 0] - shiftX) * scaleX;
-				assert(shapes[i].mesh.positions[3 * v + 0] >= -1.0 - epsilon);
-				assert(shapes[i].mesh.positions[3 * v + 0] <= 1.0 + epsilon);
-				shapes[i].mesh.positions[3 * v + 1] = (shapes[i].mesh.positions[3 * v + 1] - shiftY) * scaleY;
-				assert(shapes[i].mesh.positions[3 * v + 1] >= -1.0 - epsilon);
-				assert(shapes[i].mesh.positions[3 * v + 1] <= 1.0 + epsilon);
-				shapes[i].mesh.positions[3 * v + 2] = (shapes[i].mesh.positions[3 * v + 2] - shiftZ) * scaleZ;
-				assert(shapes[i].mesh.positions[3 * v + 2] >= -1.0 - epsilon);
-				assert(shapes[i].mesh.positions[3 * v + 2] <= 1.0 + epsilon);
-			}
-		}
-	}
-
 	/* draw a snowman */
-	void drawSnowman(mat4 moveModel, int i) {
-
-		// Enable and bind position array for drawing
-		GLSL::enableVertexAttribArray(0);
-		glBindBuffer(GL_ARRAY_BUFFER, posBufObjS);
-		glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, 0);
-
-		// Enable and bind normal array for drawing
-		GLSL::enableVertexAttribArray(1);
-		glBindBuffer(GL_ARRAY_BUFFER, norBufObjS);
-		glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 0, 0);
-
-		// Bind index array for drawing
-		int nIndices = (int) sphere[0].mesh.indices.size();
-		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, indBufObjS);
-
+	void drawSnowman(mat4 moveModel, int i)
+	{
 		SetMaterial(5);
 		//shadow
 		mat4 t = translate(mat4(1.0), vec3(0.2, -1.4, 0.2));
 		mat4 s = scale(mat4(1.0), vec3(1, 0.01, 1));
 		SetModel(moveModel*t*s);
-		glDrawElements(GL_TRIANGLES, nIndices, GL_UNSIGNED_INT, 0);
+		sphereShape->draw(prog);
 
 		if (i % 2 == 0)
 			SetMaterial(0);
@@ -338,19 +237,19 @@ public:
 		//body?
 		t = translate(mat4(1.0), vec3(0, -0.5, 0));
 		SetModel(moveModel*t);
-		glDrawElements(GL_TRIANGLES, nIndices, GL_UNSIGNED_INT, 0);
+		sphereShape->draw(prog);
 
 		t = translate(mat4(1.0), vec3(0., 0.72, 0));
 		s = scale(mat4(1.0), vec3(.75, .75, .75));
 		mat4 com = t * s;
 		SetModel(moveModel*com);
-		glDrawElements(GL_TRIANGLES, nIndices, GL_UNSIGNED_INT, 0);
+		sphereShape->draw(prog);
 
 		t = translate(mat4(1.0), vec3(0, 1.75, 0));
 		s = scale(mat4(1.0), vec3(0.55, 0.55, 0.55));
 		com = t * s;
 		SetModel(moveModel*com);
-		glDrawElements(GL_TRIANGLES, nIndices, GL_UNSIGNED_INT, 0);
+		sphereShape->draw(prog);
 
 		//switch the shading to greyscale
 		SetMaterial(4);
@@ -361,7 +260,7 @@ public:
 		s = scale(mat4(1.0), vec3(0.75, 0.05, 0.05));
 		com = t * r*t1*s;
 		SetModel(moveModel*com);
-		glDrawElements(GL_TRIANGLES, nIndices, GL_UNSIGNED_INT, 0);
+		sphereShape->draw(prog);
 
 		//update animation on arm
 		if (g_ang[i] > 18)
@@ -375,142 +274,20 @@ public:
 		s = scale(mat4(1.0), vec3(0.75, 0.05, 0.05));
 		com = t * s;
 		SetModel(moveModel*com);
-		glDrawElements(GL_TRIANGLES, nIndices, GL_UNSIGNED_INT, 0);
+		sphereShape->draw(prog);
 
 		//eyes
 		t = translate(mat4(1.0), vec3(-.35, 1.75, .38));
 		s = scale(mat4(1.0), vec3(0.05, 0.05, 0.05));
 		com = t * s;
 		SetModel(moveModel*com);
-		glDrawElements(GL_TRIANGLES, nIndices, GL_UNSIGNED_INT, 0);
+		sphereShape->draw(prog);
 
 		t = translate(mat4(1.0), vec3(.35, 1.75, .38));
 		s = scale(mat4(1.0), vec3(0.05, 0.05, 0.05));
 		com = t * s;
 		SetModel(moveModel*com);
-		CHECKED_GL_CALL(glDrawElements(GL_TRIANGLES, nIndices, GL_UNSIGNED_INT, 0));
-
-		GLSL::disableVertexAttribArray(0);
-		GLSL::disableVertexAttribArray(1);
-		glBindBuffer(GL_ARRAY_BUFFER, 0);
-		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
-
-	}
-
-
-	void loadShapes(const string &objFile, std::vector<tinyobj::shape_t>& shapes)
-	{
-		string err;
-		bool rc = tinyobj::LoadObj(shapes, materials, err, objFile.c_str());
-		if (! rc) {
-			cerr << err << endl;
-		}
-		resize_obj(shapes);
-	}
-
-
-	/*code to set up Nefertiti mesh */
-	void initNefer(std::vector<tinyobj::shape_t>& shape) {
-
-		if (! shape.size())
-		{
-			cerr << "Nefertiti mesh failed to load!" << endl;
-			return;
-		}
-
-		// Send the position array to the GPU
-		const vector<float> &posBuf = shape[0].mesh.positions;
-		glGenBuffers(1, &posBufObjB);
-		glBindBuffer(GL_ARRAY_BUFFER, posBufObjB);
-		glBufferData(GL_ARRAY_BUFFER, posBuf.size() * sizeof(float), &posBuf[0], GL_STATIC_DRAW);
-
-		// Send the normal array to the GPU
-		vector<float> norBuf;
-		glm::vec3 v1, v2, v3;
-		glm::vec3 edge1, edge2, norm;
-		int idx1, idx2, idx3;
-		//for every vertex initialize the vertex normal to 0
-		for (size_t j = 0; j < shape[0].mesh.positions.size() / 3; j++) {
-			norBuf.push_back(0);
-			norBuf.push_back(0);
-			norBuf.push_back(0);
-		}
-		//process the mesh and compute the normals - for every face
-		//add its normal to its associated vertex
-		for (size_t i = 0; i < shape[0].mesh.indices.size() / 3; i++) {
-			idx1 = shape[0].mesh.indices[3 * i + 0];
-			idx2 = shape[0].mesh.indices[3 * i + 1];
-			idx3 = shape[0].mesh.indices[3 * i + 2];
-			v1 = glm::vec3(shape[0].mesh.positions[3 * idx1 + 0], shape[0].mesh.positions[3 * idx1 + 1], shape[0].mesh.positions[3 * idx1 + 2]);
-			v2 = glm::vec3(shape[0].mesh.positions[3 * idx2 + 0], shape[0].mesh.positions[3 * idx2 + 1], shape[0].mesh.positions[3 * idx2 + 2]);
-			v3 = glm::vec3(shape[0].mesh.positions[3 * idx3 + 0], shape[0].mesh.positions[3 * idx3 + 1], shape[0].mesh.positions[3 * idx3 + 2]);
-			if (0) {
-				std::cout << "v1 " << v1.x << " " << v1.y << " " << v1.z << std::endl;
-				std::cout << "v2 " << v1.x << " " << v2.y << " " << v2.z << std::endl;
-				std::cout << "v3 " << v3.x << " " << v3.y << " " << v3.z << std::endl;
-			}
-			edge1 = v2 - v1;
-			edge2 = v3 - v1;
-			norm = glm::cross(edge1, edge2);
-			norBuf[3 * idx1 + 0] += (norm.x);
-			norBuf[3 * idx1 + 1] += (norm.y);
-			norBuf[3 * idx1 + 2] += (norm.z);
-			norBuf[3 * idx2 + 0] += (norm.x);
-			norBuf[3 * idx2 + 1] += (norm.y);
-			norBuf[3 * idx2 + 2] += (norm.z);
-			norBuf[3 * idx3 + 0] += (norm.x);
-			norBuf[3 * idx3 + 1] += (norm.y);
-			norBuf[3 * idx3 + 2] += (norm.z);
-		}
-		glGenBuffers(1, &norBufObjB);
-		glBindBuffer(GL_ARRAY_BUFFER, norBufObjB);
-		glBufferData(GL_ARRAY_BUFFER, norBuf.size() * sizeof(float), &norBuf[0], GL_STATIC_DRAW);
-
-		// Send the index array to the GPU
-		const vector<unsigned int> &indBuf = shape[0].mesh.indices;
-		glGenBuffers(1, &indBufObjB);
-		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, indBufObjB);
-		glBufferData(GL_ELEMENT_ARRAY_BUFFER, indBuf.size() * sizeof(unsigned int), &indBuf[0], GL_STATIC_DRAW);
-
-		// Unbind the arrays
-		glBindBuffer(GL_ARRAY_BUFFER, 0);
-		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
-		GLSL::checkVersion();
-		assert(glGetError() == GL_NO_ERROR);
-	}
-
-	/*send snowman data to GPU */
-	void initSnow(std::vector<tinyobj::shape_t>& shape) {
-
-		if (! shape.size())
-		{
-			cerr << "snowman model failed to load!" << endl;
-			return;
-		}
-
-		// Send the position array to the GPU
-		const vector<float> &posBuf = shape[0].mesh.positions;
-		glGenBuffers(1, &posBufObjS);
-		glBindBuffer(GL_ARRAY_BUFFER, posBufObjS);
-		glBufferData(GL_ARRAY_BUFFER, posBuf.size() * sizeof(float), &posBuf[0], GL_STATIC_DRAW);
-
-		// Send the normal array to the GPU
-		vector<float> norBuf = shape[0].mesh.normals;;
-		glGenBuffers(1, &norBufObjS);
-		glBindBuffer(GL_ARRAY_BUFFER, norBufObjS);
-		glBufferData(GL_ARRAY_BUFFER, norBuf.size() * sizeof(float), &norBuf[0], GL_STATIC_DRAW);
-
-		// Send the index array to the GPU
-		const vector<unsigned int> &indBuf = shape[0].mesh.indices;
-		glGenBuffers(1, &indBufObjS);
-		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, indBufObjS);
-		glBufferData(GL_ELEMENT_ARRAY_BUFFER, indBuf.size() * sizeof(unsigned int), &indBuf[0], GL_STATIC_DRAW);
-
-		// Unbind the arrays
-		glBindBuffer(GL_ARRAY_BUFFER, 0);
-		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
-		GLSL::checkVersion();
-		assert(glGetError() == GL_NO_ERROR);
+		sphereShape->draw(prog);
 	}
 
 	/* ground plane data to GPU */
@@ -536,14 +313,26 @@ public:
 			  0.0f, 1.0f, 0.0f,
 		};
 
-		glGenBuffers(1, &posBufObjG);
-		glBindBuffer(GL_ARRAY_BUFFER, posBufObjG);
-		glBufferData(GL_ARRAY_BUFFER, sizeof(g_backgnd_data), g_backgnd_data, GL_STATIC_DRAW);
+		CHECKED_GL_CALL(glGenVertexArrays(1, &VertexArrayID));
+		CHECKED_GL_CALL(glBindVertexArray(VertexArrayID));
 
-		glGenBuffers(1, &norBufObjG);
-		glBindBuffer(GL_ARRAY_BUFFER, norBufObjG);
-		glBufferData(GL_ARRAY_BUFFER, sizeof(nor_Buf_G), nor_Buf_G, GL_STATIC_DRAW);
+		CHECKED_GL_CALL(glGenBuffers(1, &posBufObjG));
+		CHECKED_GL_CALL(glBindBuffer(GL_ARRAY_BUFFER, posBufObjG));
+		CHECKED_GL_CALL(glBufferData(GL_ARRAY_BUFFER, sizeof(g_backgnd_data), g_backgnd_data, GL_STATIC_DRAW));
 
+		CHECKED_GL_CALL(glGenBuffers(1, &norBufObjG));
+		CHECKED_GL_CALL(glBindBuffer(GL_ARRAY_BUFFER, norBufObjG));
+		CHECKED_GL_CALL(glBufferData(GL_ARRAY_BUFFER, sizeof(nor_Buf_G), nor_Buf_G, GL_STATIC_DRAW));
+
+		CHECKED_GL_CALL(glEnableVertexAttribArray(0));
+		CHECKED_GL_CALL(glBindBuffer(GL_ARRAY_BUFFER, posBufObjG));
+		CHECKED_GL_CALL(glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, (void*) 0));
+
+		CHECKED_GL_CALL(glEnableVertexAttribArray(1));
+		CHECKED_GL_CALL(glBindBuffer(GL_ARRAY_BUFFER, norBufObjG));
+		CHECKED_GL_CALL(glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 0, 0));
+
+		CHECKED_GL_CALL(glBindVertexArray(0));
 	}
 
 	void initGL()
@@ -575,8 +364,6 @@ public:
 			g_ang[i] = 0;
 		}
 
-		initNefer(nefer);
-		initSnow(sphere);
 		initGround();
 	}
 
@@ -644,8 +431,8 @@ public:
 
 	/* Actual cull on planes */
 	//returns 1 to CULL
-	int ViewFrustCull(vec3 center, float radius) {
-
+	int ViewFrustCull(vec3 center, float radius)
+	{
 		float dist;
 
 		if (CULL)
@@ -668,25 +455,14 @@ public:
 
 
 	/* code to draw the scene */
-	void drawScene(int PmatID) {
-
+	void drawScene(int PmatID)
+	{
 		int nIndices;
 
 		for (int i = 0; i < 10; i++) {
 
-			if (!ViewFrustCull(g_transN[i], -1.25)) {
-				//draw the mesh
-				// Enable and bind position array for drawing
-				GLSL::enableVertexAttribArray(0);
-				CHECKED_GL_CALL(glBindBuffer(GL_ARRAY_BUFFER, posBufObjB));
-				CHECKED_GL_CALL(glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, 0));
-				// Enable and bind normal array for drawing
-				GLSL::enableVertexAttribArray(1);
-				CHECKED_GL_CALL(glBindBuffer(GL_ARRAY_BUFFER, norBufObjB));
-				CHECKED_GL_CALL(glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 0, 0));
-				// Bind index array for drawing
-				nIndices = (int) nefer[0].mesh.indices.size();
-				CHECKED_GL_CALL(glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, indBufObjB));
+			if (!ViewFrustCull(g_transN[i], -1.25))
+			{
 				//set the color
 				if (i % 2 == 0) {
 					SetMaterial(2);
@@ -697,19 +473,16 @@ public:
 				SetModel(g_transN[i], radians(g_rotN[i]), radians(-90.0f), vec3(1));
 
 				//draw the mesh
-				CHECKED_GL_CALL(glDrawElements(GL_TRIANGLES, nIndices, GL_UNSIGNED_INT, 0));
+				nefertitiShape->draw(prog);
+
 				//draw the shadow
 				SetMaterial(5);
 				SetModel(vec3(g_transN[i].x + 0.2, g_transN[i].y - 1, g_transN[i].z + 0.2), radians(g_rotN[i]), radians(-90.0f), vec3(1, .01, 1));
-				CHECKED_GL_CALL(glDrawElements(GL_TRIANGLES, nIndices, GL_UNSIGNED_INT, 0));
-
-				GLSL::disableVertexAttribArray(0);
-				GLSL::disableVertexAttribArray(1);
-				glBindBuffer(GL_ARRAY_BUFFER, 0);
-				glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+				nefertitiShape->draw(prog);
 			}
 			//now test the snowmen
-			if (!ViewFrustCull(g_transS[i], -1.5)) {
+			if (!ViewFrustCull(g_transS[i], -1.5))
+			{
 				/*now draw the snowmen */
 				mat4 Trans = translate(mat4(1.0f), vec3(g_transS[i].x, g_transS[i].y + 0.4, g_transS[i].z));
 				mat4 RotateY = rotate(mat4(1.0f), radians(g_rotS[i]), glm::vec3(0.0f, 1, 0));
@@ -723,18 +496,10 @@ public:
 		SetMaterial(PmatID);
 		SetModel(vec3(0), radians(0.0f), radians(0.0f), vec3(1));
 
-		glEnableVertexAttribArray(0);
-		glBindBuffer(GL_ARRAY_BUFFER, posBufObjG);
-		glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, (void*) 0);
-		GLSL::enableVertexAttribArray(1);
-		glBindBuffer(GL_ARRAY_BUFFER, norBufObjG);
-		glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 0, 0);
 
+		CHECKED_GL_CALL(glBindVertexArray(VertexArrayID));
 		CHECKED_GL_CALL(glDrawArrays(GL_TRIANGLES, 0, 6));
-
-		GLSL::disableVertexAttribArray(0);
-		GLSL::disableVertexAttribArray(1);
-		CHECKED_GL_CALL(glBindBuffer(GL_ARRAY_BUFFER, 0));
+		CHECKED_GL_CALL(glBindVertexArray(0));
 
 	}
 
@@ -742,7 +507,6 @@ public:
 
 	void render()
 	{
-
 		float t1 = (float) glfwGetTime();
 
 		float const dT = (t1 - t0);

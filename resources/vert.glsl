@@ -1,7 +1,7 @@
 #version 330
 
-layout (location = 0) in vec4 aPosition;
-layout (location = 1) in vec3 aNormal;
+layout (location = 0) in vec4 vertPos;
+layout (location = 1) in vec3 vertNor;
 
 uniform mat4 uProjMatrix;
 uniform mat4 uViewMatrix;
@@ -24,10 +24,10 @@ void main() {
   vec3 Half;
 
   /* First model transforms */
-  vPosition = uModelMatrix*aPosition;
+  vPosition = uModelMatrix*vertPos;
 
   //compute the normal in camera space
-  tNorm = vec3(uViewMatrix*uModelMatrix*vec4(normalize(aNormal), 0));
+  tNorm = vec3(uViewMatrix*uModelMatrix*vec4(normalize(vertNor), 0));
 
   //compute the point in camera space for specular
   vPosition = uViewMatrix*vPosition;
