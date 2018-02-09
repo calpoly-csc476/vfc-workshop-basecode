@@ -209,15 +209,15 @@ public:
 	}
 
 	/* top down views using ortho */
-	mat4 SetOrthoMatrix() {
-		mat4 ortho = glm::ortho(-15.0f, 15.0f, -15.0f, 15.0f, 2.1f, 100.f);
+	mat4 SetOrthoMatrix(float const Size) {
+		mat4 ortho = glm::ortho(-Size, Size, -Size, Size, 2.1f, 100.f);
 		CHECKED_GL_CALL(glUniformMatrix4fv(prog->getUniform("uProjMatrix"), 1, GL_FALSE, glm::value_ptr(ortho)));
 		return ortho;
 	}
 
 	/* camera controls - this is the camera for the top down view */
 	mat4 SetTopView() {
-		mat4 Cam = lookAt(cameraPos + vec3(0, 8, 0), cameraPos, g_lookAt - cameraPos);
+		mat4 Cam = glm::lookAt(cameraPos + vec3(0, 8, 0), cameraPos, g_lookAt - cameraPos);
 		CHECKED_GL_CALL(glUniformMatrix4fv(prog->getUniform("uViewMatrix"), 1, GL_FALSE, glm::value_ptr(Cam)));
 		return Cam;
 	}
@@ -225,7 +225,7 @@ public:
 	/*normal game camera */
 	mat4 SetView()
 	{
-		mat4 Cam = lookAt(cameraPos, g_lookAt, vec3(0, 1, 0));
+		mat4 Cam = glm::lookAt(cameraPos, g_lookAt, vec3(0, 1, 0));
 		CHECKED_GL_CALL(glUniformMatrix4fv(prog->getUniform("uViewMatrix"), 1, GL_FALSE, glm::value_ptr(Cam)));
 		return Cam;
 	}
@@ -760,6 +760,10 @@ public:
 			cameraPos -= right * cameraMoveSpeed * dT;
 		if (moveRight)
 			cameraPos += right * cameraMoveSpeed * dT;
+		if (moveDown)
+			topCameraSize -= 2.5f * dT;
+		if (moveUp)
+			topCameraSize += 2.5f * dT;
 
 		g_lookAt = cameraPos + forward;
 
@@ -785,7 +789,7 @@ public:
 		/* draw the complete scene from a top down camera */
 		CHECKED_GL_CALL(glClear(GL_DEPTH_BUFFER_BIT));
 		glViewport(0, 0, 300, 300);
-		SetOrthoMatrix();
+		SetOrthoMatrix(topCameraSize);
 		SetTopView();
 		CULL = 0;
 		drawScene(7);
@@ -793,7 +797,7 @@ public:
 		/* draw the culled scene from a top down camera */
 		CHECKED_GL_CALL(glClear(GL_DEPTH_BUFFER_BIT));
 		glViewport(0, height - 300, 300, 300);
-		SetOrthoMatrix();
+		SetOrthoMatrix(topCameraSize);
 		SetTopView();
 		CULL = 1;
 		drawScene(7);
@@ -847,8 +851,11 @@ public:
 	bool moveBack = false;
 	bool moveLeft = false;
 	bool moveRight = false;
+	bool moveUp = false;
+	bool moveDown = false;
 	glm::vec3 cameraPos;
 	float cameraMoveSpeed = 12.0f;
+	float topCameraSize = 15.f;
 
 	void keyCallback(GLFWwindow* window, int key, int scancode, int action, int mods)
 	{
@@ -865,6 +872,12 @@ public:
 			break;
 		case GLFW_KEY_D:
 			moveRight = (action != GLFW_RELEASE);
+			break;
+		case GLFW_KEY_Q:
+			moveUp = (action != GLFW_RELEASE);
+			break;
+		case GLFW_KEY_E:
+			moveDown = (action != GLFW_RELEASE);
 			break;
 
 		case GLFW_KEY_1:
