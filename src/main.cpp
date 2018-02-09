@@ -37,17 +37,77 @@ class Application : public EventCallbacks
 
 public:
 
+	WindowManager * windowManager = nullptr;
+
+	//global used to control culling or not for sub-window views
+	int CULL = 1;
+	
+	///////////////
+	// Mesh Data //
+	///////////////
+
 	std::shared_ptr<Program> prog;
 	std::shared_ptr<Shape> nefertitiShape;
 	std::shared_ptr<Shape> sphereShape;
 
+	GLuint GroundVertexArray = 0;
+	GLuint GroundPositionBuffer = 0;
+	GLuint GroundNormalBuffer = 0;
+
+
+	////////////////////
+	// Animation Data //
+	////////////////////
+	
+	// Light source position
+	glm::vec3 g_light = glm::vec3(2, 6, 6);
+
+	// Previous frame start time (for time-based movement
+	float t0 = 0;
+
+
+
+	//transforms on objects - ugly as its frankenstein of two example codes
+	glm::vec3 g_transN[10];
+	float g_scaleN[10];
+	float g_rotN[10];
+	vec3 g_transS[10];
+	float g_scaleS[10];
+	float g_rotS[10];
+	int g_mat_ids[10];
+	float g_ang[10];
+
+	float SnowmanArmUpdateDir = 0.5f;
+
+	/////////////////
+	// Camera Data //
+	/////////////////
+
+	vec3 cameraLookAt = vec3(0, 1, -1);
+
+	float cTheta = 0;
+	float cPhi = 0;
+	bool mouseDown = false;
+
+	double lastX = 0;
+	double lastY = 0;
+	float cameraRotateSpeed = 0.005f;
+
+	bool moveForward = false;
+	bool moveBack = false;
+	bool moveLeft = false;
+	bool moveRight = false;
+	bool moveUp = false;
+	bool moveDown = false;
+	glm::vec3 cameraPos;
+	float cameraMoveSpeed = 12.0f;
+	float topCameraSize = 15.f;
+
+
 	void init(const std::string& resourceDirectory)
 	{
-		RESOURCE_DIR = resourceDirectory;
-
 		glEnable(GL_BLEND);
 		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-
 
 		initGL();
 
@@ -89,34 +149,6 @@ public:
 
 		glClearColor(0.6f, 0.6f, 0.8f, 1.0f);
 	}
-
-	WindowManager * windowManager = nullptr;
-
-	string RESOURCE_DIR = ""; // Where the resources are loaded from
-
-
-	//global used to control culling or not for sub-window views
-	int CULL = 1;
-
-	glm::vec3 g_light = glm::vec3(2, 6, 6);
-	float updateDir = 0.5;
-
-	vec3 g_lookAt = vec3(0, 1, -1);
-
-	//transforms on objects - ugly as its frankenstein of two example codes
-	glm::vec3 g_transN[10];
-	float g_scaleN[10];
-	float g_rotN[10];
-	vec3 g_transS[10];
-	float g_scaleS[10];
-	float g_rotS[10];
-	int g_mat_ids[10];
-	float g_ang[10];
-
-
-	GLuint VertexArrayID;
-	GLuint posBufObjG = 0;
-	GLuint norBufObjG = 0;
 
 	/* helper function to change material attributes */
 	void SetMaterial(int i) {
@@ -192,7 +224,7 @@ public:
 
 	/* camera controls - this is the camera for the top down view */
 	mat4 SetTopView() {
-		mat4 Cam = glm::lookAt(cameraPos + vec3(0, 8, 0), cameraPos, g_lookAt - cameraPos);
+		mat4 Cam = glm::lookAt(cameraPos + vec3(0, 8, 0), cameraPos, cameraLookAt - cameraPos);
 		CHECKED_GL_CALL(glUniformMatrix4fv(prog->getUniform("uViewMatrix"), 1, GL_FALSE, glm::value_ptr(Cam)));
 		return Cam;
 	}
@@ -200,7 +232,7 @@ public:
 	/*normal game camera */
 	mat4 SetView()
 	{
-		mat4 Cam = glm::lookAt(cameraPos, g_lookAt, vec3(0, 1, 0));
+		mat4 Cam = glm::lookAt(cameraPos, cameraLookAt, vec3(0, 1, 0));
 		CHECKED_GL_CALL(glUniformMatrix4fv(prog->getUniform("uViewMatrix"), 1, GL_FALSE, glm::value_ptr(Cam)));
 		return Cam;
 	}
@@ -264,10 +296,10 @@ public:
 
 		//update animation on arm
 		if (g_ang[i] > 18)
-			updateDir = -0.5;
+			SnowmanArmUpdateDir = -0.5;
 		else if (g_ang[i] < -20)
-			updateDir = 0.5;
-		g_ang[i] += updateDir;
+			SnowmanArmUpdateDir = 0.5;
+		g_ang[i] += SnowmanArmUpdateDir;
 
 		//the left arm
 		t = translate(mat4(1.0), vec3(-.75, 0.75, .5));
@@ -291,8 +323,8 @@ public:
 	}
 
 	/* ground plane data to GPU */
-	void initGround() {
-
+	void initGround()
+	{
 		float G_edge = 20;
 		GLfloat g_backgnd_data[] = {
 			  -G_edge, -1.0f, -G_edge,
@@ -313,23 +345,23 @@ public:
 			  0.0f, 1.0f, 0.0f,
 		};
 
-		CHECKED_GL_CALL(glGenVertexArrays(1, &VertexArrayID));
-		CHECKED_GL_CALL(glBindVertexArray(VertexArrayID));
+		CHECKED_GL_CALL(glGenVertexArrays(1, &GroundVertexArray));
+		CHECKED_GL_CALL(glBindVertexArray(GroundVertexArray));
 
-		CHECKED_GL_CALL(glGenBuffers(1, &posBufObjG));
-		CHECKED_GL_CALL(glBindBuffer(GL_ARRAY_BUFFER, posBufObjG));
+		CHECKED_GL_CALL(glGenBuffers(1, &GroundPositionBuffer));
+		CHECKED_GL_CALL(glBindBuffer(GL_ARRAY_BUFFER, GroundPositionBuffer));
 		CHECKED_GL_CALL(glBufferData(GL_ARRAY_BUFFER, sizeof(g_backgnd_data), g_backgnd_data, GL_STATIC_DRAW));
 
-		CHECKED_GL_CALL(glGenBuffers(1, &norBufObjG));
-		CHECKED_GL_CALL(glBindBuffer(GL_ARRAY_BUFFER, norBufObjG));
+		CHECKED_GL_CALL(glGenBuffers(1, &GroundNormalBuffer));
+		CHECKED_GL_CALL(glBindBuffer(GL_ARRAY_BUFFER, GroundNormalBuffer));
 		CHECKED_GL_CALL(glBufferData(GL_ARRAY_BUFFER, sizeof(nor_Buf_G), nor_Buf_G, GL_STATIC_DRAW));
 
 		CHECKED_GL_CALL(glEnableVertexAttribArray(0));
-		CHECKED_GL_CALL(glBindBuffer(GL_ARRAY_BUFFER, posBufObjG));
+		CHECKED_GL_CALL(glBindBuffer(GL_ARRAY_BUFFER, GroundPositionBuffer));
 		CHECKED_GL_CALL(glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, (void*) 0));
 
 		CHECKED_GL_CALL(glEnableVertexAttribArray(1));
-		CHECKED_GL_CALL(glBindBuffer(GL_ARRAY_BUFFER, norBufObjG));
+		CHECKED_GL_CALL(glBindBuffer(GL_ARRAY_BUFFER, GroundNormalBuffer));
 		CHECKED_GL_CALL(glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 0, 0));
 
 		CHECKED_GL_CALL(glBindVertexArray(0));
@@ -347,7 +379,8 @@ public:
 		float Wscale = 18.0;
 		srand(1234);
 		//allocate the transforms for the different models
-		for (int i = 0; i < 10; i++) {
+		for (int i = 0; i < 10; i++)
+		{
 			tx = 0.2f + Wscale * (static_cast <float> (rand()) / static_cast <float> (RAND_MAX)) - Wscale / 1.0f;
 			tz = 0.2f + Wscale * (static_cast <float> (rand()) / static_cast <float> (RAND_MAX)) - Wscale / 1.0f;
 			r = 360 * (static_cast <float> (rand()) / static_cast <float> (RAND_MAX));
@@ -371,8 +404,8 @@ public:
 	vec4 Left, Right, Bottom, Top, Near, Far;
 	vec4 planes[6];
 
-	void ExtractVFPlanes(mat4 P, mat4 V) {
-
+	void ExtractVFPlanes(mat4 P, mat4 V)
+	{
 		/* composite matrix */
 		mat4 comp = P * V;
 		vec3 n; //use to pull out normal
@@ -453,7 +486,6 @@ public:
 		}
 	}
 
-
 	/* code to draw the scene */
 	void drawScene(int PmatID)
 	{
@@ -497,13 +529,10 @@ public:
 		SetModel(vec3(0), radians(0.0f), radians(0.0f), vec3(1));
 
 
-		CHECKED_GL_CALL(glBindVertexArray(VertexArrayID));
+		CHECKED_GL_CALL(glBindVertexArray(GroundVertexArray));
 		CHECKED_GL_CALL(glDrawArrays(GL_TRIANGLES, 0, 6));
 		CHECKED_GL_CALL(glBindVertexArray(0));
-
 	}
-
-	float t0 = 0;
 
 	void render()
 	{
@@ -529,7 +558,7 @@ public:
 		if (moveUp)
 			topCameraSize += 2.5f * dT;
 
-		g_lookAt = cameraPos + forward;
+		cameraLookAt = cameraPos + forward;
 
 		// Get current frame buffer size.
 		int width, height;
@@ -575,14 +604,6 @@ public:
 
 	}
 
-	float cTheta = 0;
-	float cPhi = 0;
-	bool mouseDown = false;
-
-	double lastX = 0;
-	double lastY = 0;
-	float cameraRotateSpeed = 0.005f;
-
 	void mouseCallback(GLFWwindow* window, int but, int action, int mods)
 	{
 		if (action == GLFW_PRESS)
@@ -608,18 +629,9 @@ public:
 		lastY = ypos;
 	}
 
-	void scrollCallback(GLFWwindow* window, double deltaX, double deltaY) {
+	void scrollCallback(GLFWwindow* window, double deltaX, double deltaY)
+	{
 	}
-
-	bool moveForward = false;
-	bool moveBack = false;
-	bool moveLeft = false;
-	bool moveRight = false;
-	bool moveUp = false;
-	bool moveDown = false;
-	glm::vec3 cameraPos;
-	float cameraMoveSpeed = 12.0f;
-	float topCameraSize = 15.f;
 
 	void keyCallback(GLFWwindow* window, int key, int scancode, int action, int mods)
 	{
