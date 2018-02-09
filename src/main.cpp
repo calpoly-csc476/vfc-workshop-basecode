@@ -132,11 +132,6 @@ public:
 		return retCode;
 	}
 
-	inline void safe_glUniformMatrix4fv(const GLint handle, const GLfloat data[]) {
-		if (handle >= 0)
-			glUniformMatrix4fv(handle, 1, GL_FALSE, data);
-	}
-
 	/* helper function to change material attributes */
 	void SetMaterial(int i) {
 
@@ -199,28 +194,28 @@ public:
 		glfwGetFramebufferSize(windowManager->getHandle(), &width, &height);
 
 		mat4 Projection = perspective(radians(50.0f), (float) width / height, 0.1f, 100.f);
-		safe_glUniformMatrix4fv(h_uProjMatrix, glm::value_ptr(Projection));
+		CHECKED_GL_CALL(glUniformMatrix4fv(h_uProjMatrix, 1, GL_FALSE, glm::value_ptr(Projection)));
 		return Projection;
 	}
 
 	/* top down views using ortho */
 	mat4 SetOrthoMatrix() {
 		mat4 ortho = glm::ortho(-15.0f, 15.0f, -15.0f, 15.0f, 2.1f, 100.f);
-		safe_glUniformMatrix4fv(h_uProjMatrix, glm::value_ptr(ortho));
+		CHECKED_GL_CALL(glUniformMatrix4fv(h_uProjMatrix, 1, GL_FALSE, glm::value_ptr(ortho)));
 		return ortho;
 	}
 
 	/* camera controls - this is the camera for the top down view */
 	mat4 SetTopView() {
 		mat4 Cam = lookAt(g_eye + vec3(0, 8, 0), g_eye, g_lookAt - g_eye);
-		safe_glUniformMatrix4fv(h_uViewMatrix, glm::value_ptr(Cam));
+		CHECKED_GL_CALL(glUniformMatrix4fv(h_uViewMatrix, 1, GL_FALSE, glm::value_ptr(Cam)));
 		return Cam;
 	}
 
 	/*normal game camera */
 	mat4 SetView() {
 		mat4 Cam = lookAt(g_eye, g_lookAt, vec3(0, 1, 0));
-		safe_glUniformMatrix4fv(h_uViewMatrix, glm::value_ptr(Cam));
+		CHECKED_GL_CALL(glUniformMatrix4fv(h_uViewMatrix, 1, GL_FALSE, glm::value_ptr(Cam)));
 		return Cam;
 	}
 
@@ -231,12 +226,12 @@ public:
 		mat4 RotateX = rotate(glm::mat4(1.0f), rotX, glm::vec3(1, 0, 0));
 		mat4 Sc = scale(glm::mat4(1.0f), sc);
 		mat4 com = Trans * RotateY*Sc*RotateX;
-		safe_glUniformMatrix4fv(h_uModelMatrix, glm::value_ptr(com));
+		CHECKED_GL_CALL(glUniformMatrix4fv(h_uModelMatrix, 1, GL_FALSE, glm::value_ptr(com)));
 		return com;
 	}
 
 	void SetModel(mat4 m) {
-		safe_glUniformMatrix4fv(h_uModelMatrix, glm::value_ptr(m));
+		CHECKED_GL_CALL(glUniformMatrix4fv(h_uModelMatrix, 1, GL_FALSE, glm::value_ptr(m)));
 	}
 
 	//Given a vector of shapes which has already been read from an obj file
