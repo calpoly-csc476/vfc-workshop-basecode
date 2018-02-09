@@ -24,14 +24,39 @@
 
 #include "GLSL.h"
 #include "Program.h"
+#include "WindowManager.h"
 
 
 using namespace std;
 using namespace glm;
 
+class Application : public EventCallbacks
+{
+
+
+public:
+
+	void init(const std::string& resourceDirectory)
+	{
+		RESOURCE_DIR = resourceDirectory;
+
+		glEnable(GL_BLEND);
+		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+		loadShapes(RESOURCE_DIR + "/Nefertiti-10k.obj", nefer);
+		loadShapes(RESOURCE_DIR + "/sphere.obj", sphere);
+		initGL();
+		installShaders(RESOURCE_DIR + "/vert.glsl", RESOURCE_DIR + "/frag.glsl");
+		glClearColor(0.6f, 0.6f, 0.8f, 1.0f);
+
+		glGenVertexArrays(1, &VertexArrayID);
+		glBindVertexArray(VertexArrayID);
+	}
+
+	WindowManager * windowManager = nullptr;
+
 string RESOURCE_DIR = ""; // Where the resources are loaded from
 
-GLFWwindow* window;
+GLuint VertexArrayID;
 
 //main geometry for program
 vector<tinyobj::shape_t> nefer;
@@ -41,9 +66,7 @@ vector<tinyobj::shape_t> sphere;
 //global used to control culling or not for sub-window views
 int CULL = 1;
 
-int g_width;
-int g_height;
-glm::vec3 g_light(2, 6, 6);
+glm::vec3 g_light = glm::vec3(2, 6, 6);
 float updateDir = 0.5;
 
 //camera control - you can ignore - what matters is eye location and view matrix
@@ -172,7 +195,10 @@ void SetMaterial(int i) {
 
 /* projection matrix */
 mat4 SetProjectionMatrix() {
-	mat4 Projection = perspective(radians(50.0f), (float) g_width / g_height, 0.1f, 100.f);
+	int width, height;
+	glfwGetFramebufferSize(windowManager->getHandle(), &width, &height);
+
+	mat4 Projection = perspective(radians(50.0f), (float) width / height, 0.1f, 100.f);
 	safe_glUniformMatrix4fv(h_uProjMatrix, glm::value_ptr(Projection));
 	return Projection;
 }
@@ -356,7 +382,7 @@ void drawSnowman(mat4 moveModel, int i) {
 	s = scale(mat4(1.0), vec3(0.05, 0.05, 0.05));
 	com = t * s;
 	SetModel(moveModel*com);
-	glDrawElements(GL_TRIANGLES, nIndices, GL_UNSIGNED_INT, 0);
+	CHECKED_GL_CALL(glDrawElements(GL_TRIANGLES, nIndices, GL_UNSIGNED_INT, 0));
 
 	GLSL::disableVertexAttribArray(h_aPosition);
 	GLSL::disableVertexAttribArray(h_aNormal);
@@ -379,6 +405,12 @@ void loadShapes(const string &objFile, std::vector<tinyobj::shape_t>& shapes)
 
 /*code to set up Nefertiti mesh */
 void initNefer(std::vector<tinyobj::shape_t>& shape) {
+
+	if (! shape.size())
+	{
+		cerr << "Nefertiti mesh failed to load!" << endl;
+		return;
+	}
 
 	// Send the position array to the GPU
 	const vector<float> &posBuf = shape[0].mesh.positions;
@@ -443,6 +475,12 @@ void initNefer(std::vector<tinyobj::shape_t>& shape) {
 
 /*send snowman data to GPU */
 void initSnow(std::vector<tinyobj::shape_t>& shape) {
+
+	if (! shape.size())
+	{
+		cerr << "snowman model failed to load!" << endl;
+		return;
+	}
 
 	// Send the position array to the GPU
 	const vector<float> &posBuf = shape[0].mesh.positions;
@@ -701,15 +739,15 @@ void drawScene(int PmatID) {
 			//draw the mesh
 			// Enable and bind position array for drawing
 			GLSL::enableVertexAttribArray(h_aPosition);
-			glBindBuffer(GL_ARRAY_BUFFER, posBufObjB);
-			glVertexAttribPointer(h_aPosition, 3, GL_FLOAT, GL_FALSE, 0, 0);
+			CHECKED_GL_CALL(glBindBuffer(GL_ARRAY_BUFFER, posBufObjB));
+			CHECKED_GL_CALL(glVertexAttribPointer(h_aPosition, 3, GL_FLOAT, GL_FALSE, 0, 0));
 			// Enable and bind normal array for drawing
 			GLSL::enableVertexAttribArray(h_aNormal);
-			glBindBuffer(GL_ARRAY_BUFFER, norBufObjB);
-			glVertexAttribPointer(h_aNormal, 3, GL_FLOAT, GL_FALSE, 0, 0);
+			CHECKED_GL_CALL(glBindBuffer(GL_ARRAY_BUFFER, norBufObjB));
+			CHECKED_GL_CALL(glVertexAttribPointer(h_aNormal, 3, GL_FLOAT, GL_FALSE, 0, 0));
 			// Bind index array for drawing
 			nIndices = (int) nefer[0].mesh.indices.size();
-			glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, indBufObjB);
+			CHECKED_GL_CALL(glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, indBufObjB));
 			//set the color
 			if (i % 2 == 0) {
 				SetMaterial(2);
@@ -720,11 +758,11 @@ void drawScene(int PmatID) {
 			SetModel(g_transN[i], radians(g_rotN[i]), radians(-90.0f), vec3(1));
 
 			//draw the mesh
-			glDrawElements(GL_TRIANGLES, nIndices, GL_UNSIGNED_INT, 0);
+			CHECKED_GL_CALL(glDrawElements(GL_TRIANGLES, nIndices, GL_UNSIGNED_INT, 0));
 			//draw the shadow
 			SetMaterial(5);
 			SetModel(vec3(g_transN[i].x + 0.2, g_transN[i].y - 1, g_transN[i].z + 0.2), radians(g_rotN[i]), radians(-90.0f), vec3(1, .01, 1));
-			glDrawElements(GL_TRIANGLES, nIndices, GL_UNSIGNED_INT, 0);
+			CHECKED_GL_CALL(glDrawElements(GL_TRIANGLES, nIndices, GL_UNSIGNED_INT, 0));
 
 			GLSL::disableVertexAttribArray(h_aPosition);
 			GLSL::disableVertexAttribArray(h_aNormal);
@@ -753,23 +791,23 @@ void drawScene(int PmatID) {
 	glBindBuffer(GL_ARRAY_BUFFER, norBufObjG);
 	glVertexAttribPointer(h_aNormal, 3, GL_FLOAT, GL_FALSE, 0, 0);
 
-	glDrawArrays(GL_TRIANGLES, 0, 6);
+	CHECKED_GL_CALL(glDrawArrays(GL_TRIANGLES, 0, 6));
 
 	GLSL::disableVertexAttribArray(h_aPosition);
 	GLSL::disableVertexAttribArray(h_aNormal);
-	glBindBuffer(GL_ARRAY_BUFFER, 0);
+	CHECKED_GL_CALL(glBindBuffer(GL_ARRAY_BUFFER, 0));
 
 }
 
-void drawGL() {
+void render() {
 
 	// Get current frame buffer size.
 	int width, height;
-	glfwGetFramebufferSize(window, &width, &height);
+	glfwGetFramebufferSize(windowManager->getHandle(), &width, &height);
 	glViewport(0, 0, width, height);
 
 	// Clear the screen
-	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+	CHECKED_GL_CALL(glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT));
 
 	// Use our GLSL program
 	glUseProgram(ShadeProg);
@@ -783,7 +821,7 @@ void drawGL() {
 	drawScene(0);
 
 	/* draw the complete scene from a top down camera */
-	glClear(GL_DEPTH_BUFFER_BIT);
+	CHECKED_GL_CALL(glClear(GL_DEPTH_BUFFER_BIT));
 	glViewport(0, 0, 300, 300);
 	SetOrthoMatrix();
 	SetTopView();
@@ -791,8 +829,8 @@ void drawGL() {
 	drawScene(7);
 
 	/* draw the culled scene from a top down camera */
-	glClear(GL_DEPTH_BUFFER_BIT);
-	glViewport(0, g_height - 300, 300, 300);
+	CHECKED_GL_CALL(glClear(GL_DEPTH_BUFFER_BIT));
+	glViewport(0, height - 300, 300, 300);
 	SetOrthoMatrix();
 	SetTopView();
 	CULL = 1;
@@ -801,19 +839,21 @@ void drawGL() {
 }
 
 
-void window_size_callback(GLFWwindow* window, int w, int h) {
-	glViewport(0, 0, (GLsizei) w, (GLsizei) h);
-	g_width = w;
-	g_height = h;
+void resizeCallback(GLFWwindow* window, int w, int h) {
+
 }
 
-void mouse_callback(GLFWwindow* window, int but, int action, int mods) {
+void mouseCallback(GLFWwindow* window, int but, int action, int mods) {
 
 	cout << "use two finger mouse scroll" << endl;
 }
 
+void cursorPosCallback(GLFWwindow* window, double xpos, double ypos)
+{
+}
+
 /* much of the camera is here */
-void scroll_callback(GLFWwindow* window, double deltaX, double deltaY) {
+void scrollCallback(GLFWwindow* window, double deltaX, double deltaY) {
 	vec3 diff, newV;
 	//cout << "xDel + yDel " << deltaX << " " << deltaY << endl;
 	g_theta += (float) deltaX;
@@ -831,7 +871,7 @@ void scroll_callback(GLFWwindow* window, double deltaX, double deltaY) {
 	strafe = cross(vec3(0, 1, 0), view);
 }
 
-void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods)
+void keyCallback(GLFWwindow* window, int key, int scancode, int action, int mods)
 {
 	float speed = 0.2f;
 
@@ -861,77 +901,46 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
 		g_Camtrans -= 0.25;
 }
 
+};
+
 int main(int argc, char **argv)
 {
-	if (argc < 2)
+	// Where the resources are loaded from
+	std::string resourceDir = "resources";
+
+	if (argc >= 2)
 	{
-		cout << "Please specify the resource directory: e.g. prog4 ../resources" << endl;
-		RESOURCE_DIR = "resources/";
+		resourceDir = argv[1];
 	}
-	else
+
+	Application *application = new Application();
+
+	// Your main will always include a similar set up to establish your window
+	// and GL context, etc.
+
+	WindowManager *windowManager = new WindowManager();
+	windowManager->init(1024, 768);
+	windowManager->setEventCallbacks(application);
+	application->windowManager = windowManager;
+
+	// This is the code that will likely change program to program as you
+	// may need to initialize or set up different data and state
+
+	application->init(resourceDir);
+
+	// Loop until the user closes the window.
+	while (! glfwWindowShouldClose(windowManager->getHandle()))
 	{
-		RESOURCE_DIR = argv[1] + string("/");
-	}
-	cout << "Resources direction: '" << RESOURCE_DIR << "'" << endl;
+		// Render scene.
+		application->render();
 
-	// Initialise GLFW
-	if (!glfwInit())
-	{
-		fprintf(stderr, "Failed to initialize GLFW\n");
-		return -1;
-	}
-
-	glfwWindowHint(GLFW_SAMPLES, 4);
-	glfwWindowHint(GLFW_RESIZABLE, GL_FALSE);
-	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 2);
-	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 1);
-
-	// Open a window and create its OpenGL context
-	g_width = 1024;
-	g_height = 768;
-	window = glfwCreateWindow(g_width, g_height, "vfc with game camera", NULL, NULL);
-	if (window == NULL) {
-		fprintf(stderr, "Failed to open GLFW window. If you have an Intel GPU, they are not 3.3 compatible. Try the 2.1 version of the tutorials.\n");
-		glfwTerminate();
-		return -1;
-	}
-	glfwMakeContextCurrent(window);
-	glfwSetKeyCallback(window, key_callback);
-	glfwSetScrollCallback(window, scroll_callback);
-	glfwSetMouseButtonCallback(window, mouse_callback);
-	glfwSetWindowSizeCallback(window, window_size_callback);
-	// Initialize GLAD
-	if (! gladLoadGL())
-	{
-		std::cerr << "Failed to initialize GLAD" << std::endl;
-		return false;
-	}
-
-	// Ensure we can capture the escape key being pressed below
-	glfwSetInputMode(window, GLFW_STICKY_KEYS, GL_TRUE);
-
-	glEnable(GL_BLEND);
-	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-	loadShapes(RESOURCE_DIR + "Nefertiti-10k.obj", nefer);
-	loadShapes(RESOURCE_DIR + "sphere.obj", sphere);
-	initGL();
-	installShaders(RESOURCE_DIR + "vert.glsl", RESOURCE_DIR + "frag.glsl");
-	glClearColor(0.6f, 0.6f, 0.8f, 1.0f);
-
-
-	do {
-		drawGL();
-
-		// Swap buffers
-		glfwSwapBuffers(window);
+		// Swap front and back buffers.
+		glfwSwapBuffers(windowManager->getHandle());
+		// Poll for and process events.
 		glfwPollEvents();
+	}
 
-	} // Check if the ESC key was pressed or the window was closed
-	while (glfwGetKey(window, GLFW_KEY_ESCAPE) != GLFW_PRESS &&
-		glfwWindowShouldClose(window) == 0);
-
-	// Close OpenGL window and terminate GLFW
-	glfwTerminate();
-
+	// Quit program.
+	windowManager->shutdown();
 	return 0;
 }
