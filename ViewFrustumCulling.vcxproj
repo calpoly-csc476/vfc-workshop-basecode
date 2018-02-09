@@ -77,7 +77,6 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="ext\tiny_obj_loader\tiny_obj_loader.h" />
-    <ClInclude Include="src\glfw3.h" />
     <ClInclude Include="src\GLSL.h" />
     <ClInclude Include="src\Program.h" />
     <ClInclude Include="stb_image.h" />

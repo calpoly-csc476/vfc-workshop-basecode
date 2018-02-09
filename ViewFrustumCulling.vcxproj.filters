@@ -20,7 +20,6 @@
     <ClInclude Include="stb_image.h">
       <Filter>ext</Filter>
     </ClInclude>
-    <ClInclude Include="src\glfw3.h" />
     <ClInclude Include="src\GLSL.h" />
     <ClInclude Include="ext\tiny_obj_loader\tiny_obj_loader.h">
       <Filter>ext</Filter>
