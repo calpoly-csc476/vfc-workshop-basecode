@@ -6,20 +6,26 @@
 // note shaders using GLSL 1.2 (just did not bother to update)
 
 
-#define GLEW_STATIC
 #include <stdio.h>
 #include <stdlib.h>
-#include <GL/glew.h>
-#include <GLFW/glfw3.h>
 #include <iostream>
 #include <cassert>
 #include <cmath>
 #include <stdio.h>
-#include "GLSL.h"
-#include "tiny_obj_loader.h"
-#include <glm/gtc/matrix_transform.hpp> //perspective, trans etc
-#include <glm/gtc/type_ptr.hpp> //value_ptr
 #include <time.h>
+
+#include <glad/glad.h>
+#include <GLFW/glfw3.h>
+#include <tiny_obj_loader/tiny_obj_loader.h>
+
+#include <glm/glm.hpp>
+#include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtc/type_ptr.hpp>
+
+#include "GLSL.h"
+#include "Program.h"
+
+
 using namespace std;
 using namespace glm;
 
@@ -362,8 +368,9 @@ void drawSnowman(mat4 moveModel, int i) {
 
 void loadShapes(const string &objFile, std::vector<tinyobj::shape_t>& shapes)
 {
-	string err = tinyobj::LoadObj(shapes, materials, objFile.c_str());
-	if(!err.empty()) {
+	string err;
+	bool rc = tinyobj::LoadObj(shapes, materials, err, objFile.c_str());
+	if(! rc) {
 		cerr << err << endl;
 	}
    resize_obj(shapes);
@@ -542,16 +549,16 @@ bool installShaders(const string &vShaderName, const string &fShaderName)
 	GLuint FS = glCreateShader(GL_FRAGMENT_SHADER);
 	
 	// Read shader sources
-	const char *vshader = GLSL::textFileRead(vShaderName.c_str());
-	const char *fshader = GLSL::textFileRead(fShaderName.c_str());
-	glShaderSource(VS, 1, &vshader, NULL);
-	glShaderSource(FS, 1, &fshader, NULL);
+	std::string vShaderString = readFileAsString(vShaderName);
+	std::string fShaderString = readFileAsString(fShaderName);
+	const char *vshader = vShaderString.c_str();
+	const char *fshader = fShaderString.c_str();
+	CHECKED_GL_CALL(glShaderSource(VS, 1, &vshader, NULL));
+	CHECKED_GL_CALL(glShaderSource(FS, 1, &fshader, NULL));
 	
 	// Compile vertex shader
 	glCompileShader(VS);
    std::cout << "just compiled the v shader" << std::endl;
-   printOglError(__FILE__, __LINE__);
-	GLSL::printError();
 	glGetShaderiv(VS, GL_COMPILE_STATUS, &rc);
 	GLSL::printShaderInfoLog(VS);
 	if(!rc) {
@@ -562,7 +569,6 @@ bool installShaders(const string &vShaderName, const string &fShaderName)
 	// Compile fragment shader
 	glCompileShader(FS);
    std::cout << "just compiled the f shader" << std::endl;
-	GLSL::printError();
 	glGetShaderiv(FS, GL_COMPILE_STATUS, &rc);
 	GLSL::printShaderInfoLog(FS);
 	if(!rc) {
@@ -572,12 +578,11 @@ bool installShaders(const string &vShaderName, const string &fShaderName)
 	
 	// Create the program and link
 	   ShadeProg = glCreateProgram();
-	   glAttachShader(ShadeProg, VS);
-	   glAttachShader(ShadeProg, FS);
-	   glLinkProgram(ShadeProg);
+	   CHECKED_GL_CALL( glAttachShader(ShadeProg, VS));
+	   CHECKED_GL_CALL(glAttachShader(ShadeProg, FS));
+	   CHECKED_GL_CALL( glLinkProgram(ShadeProg));
       std::cout << "just linked the shaders" << std::endl;
    
-	   GLSL::printError();
 	   glGetProgramiv(ShadeProg, GL_LINK_STATUS, &rc);
 	   GLSL::printProgramInfoLog(ShadeProg);
 	   if(!rc) {
@@ -790,10 +795,7 @@ void drawGL() {
    SetTopView();
 	CULL = 1;
 	drawScene(7);
-	glUseProgram(0);
-	
-	assert(glGetError() == GL_NO_ERROR);
-
+	CHECKED_GL_CALL(glUseProgram(0));
 }
 
 
@@ -861,9 +863,12 @@ int main(int argc, char **argv)
 {
    if(argc < 2) {
       cout << "Please specify the resource directory: e.g. prog4 ../resources" << endl;
-      return 0;
+	  RESOURCE_DIR = "resources/";
    }
-   RESOURCE_DIR = argv[1] + string("/");
+   else
+   {
+	   RESOURCE_DIR = argv[1] + string("/");
+   }
 	cout << "Resources " << RESOURCE_DIR << endl;
 
 // Initialise GLFW
@@ -892,18 +897,19 @@ int main(int argc, char **argv)
     glfwSetScrollCallback(window, scroll_callback);
     glfwSetMouseButtonCallback(window, mouse_callback);
     glfwSetWindowSizeCallback(window, window_size_callback);
-// Initialize GLEW
-   if (glewInit() != GLEW_OK) {
-      fprintf(stderr, "Failed to initialize GLEW\n");
-      return -1;
-   }
+	// Initialize GLAD
+	if (! gladLoadGL())
+	{
+		std::cerr << "Failed to initialize GLAD" << std::endl;
+		return false;
+	}
 
    // Ensure we can capture the escape key being pressed below
    glfwSetInputMode(window, GLFW_STICKY_KEYS, GL_TRUE);
 
    glEnable (GL_BLEND);
    glBlendFunc (GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-	loadShapes(RESOURCE_DIR + "Nefertiti-100k.obj", nefer);
+	loadShapes(RESOURCE_DIR + "Nefertiti-10k.obj", nefer);
 	loadShapes(RESOURCE_DIR + "sphere.obj", sphere);
 	initGL();
 	installShaders(RESOURCE_DIR + "vert.glsl", RESOURCE_DIR + "frag.glsl");
