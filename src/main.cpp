@@ -512,7 +512,7 @@ void initGL()
 
 	float tx, tz, s, r;
 	float Wscale = 18.0;
-	srand(time(NULL));
+	srand(1234);
 	//allocate the transforms for the different models
 	for (int i = 0; i < 10; i++) {
 		tx = 0.2f + Wscale * (static_cast <float> (rand()) / static_cast <float> (RAND_MAX)) - Wscale / 1.0f;
