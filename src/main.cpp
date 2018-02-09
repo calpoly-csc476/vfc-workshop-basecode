@@ -9,6 +9,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <iostream>
+#include <memory>
 #include <cassert>
 #include <cmath>
 #include <stdio.h>
@@ -33,8 +34,9 @@ using namespace glm;
 class Application : public EventCallbacks
 {
 
-
 public:
+
+	std::shared_ptr<Program> prog;
 
 	void init(const std::string& resourceDirectory)
 	{
@@ -45,7 +47,31 @@ public:
 		loadShapes(RESOURCE_DIR + "/Nefertiti-10k.obj", nefer);
 		loadShapes(RESOURCE_DIR + "/sphere.obj", sphere);
 		initGL();
-		installShaders(RESOURCE_DIR + "/vert.glsl", RESOURCE_DIR + "/frag.glsl");
+
+		// Initialize the GLSL program.
+		prog = make_shared<Program>();
+		prog->setVerbose(true);
+		prog->setShaderNames(
+			resourceDirectory + "/vert.glsl",
+			resourceDirectory + "/frag.glsl");
+		if (! prog->init())
+		{
+			std::cerr << "One or more shaders failed to compile... exiting!" << std::endl;
+			exit(1);
+		}
+		prog->addUniform("uProjMatrix");
+		prog->addUniform("uViewMatrix");
+		prog->addUniform("uModelMatrix");
+
+		prog->addUniform("uLightPos");
+		prog->addUniform("UaColor");
+		prog->addUniform("UdColor");
+		prog->addUniform("UsColor");
+		prog->addUniform("Ushine");
+
+		prog->addAttribute("aPosition");
+		prog->addAttribute("aNormal");
+
 		glClearColor(0.6f, 0.6f, 0.8f, 1.0f);
 
 		glGenVertexArrays(1, &VertexArrayID);
@@ -87,7 +113,6 @@ public:
 	int g_mat_ids[10];
 	float g_ang[10];
 
-	GLuint ShadeProg;
 	GLuint posBufObjB = 0;
 	GLuint norBufObjB = 0;
 	GLuint indBufObjB = 0;
@@ -99,14 +124,6 @@ public:
 	GLuint posBufObjG = 0;
 	GLuint norBufObjG = 0;
 
-	//Handles to the shader data
-	GLint h_aPosition;
-	GLint h_aNormal;
-	GLint h_uModelMatrix;
-	GLint h_uViewMatrix;
-	GLint h_uProjMatrix;
-	GLint h_uLightPos;
-	GLint h_uMatAmb, h_uMatDif, h_uMatSpec, h_uMatShine;
 
 	int printOglError(const char *file, int line) {
 		/* Returns 1 if an OpenGL error occurred, 0 otherwise. */
@@ -135,55 +152,54 @@ public:
 	/* helper function to change material attributes */
 	void SetMaterial(int i) {
 
-		glUseProgram(ShadeProg);
 		switch (i) {
 		case 0: //shiny blue plastic
-			glUniform3f(h_uMatAmb, 0.02f, 0.04f, 0.2f);
-			glUniform3f(h_uMatDif, 0.0f, 0.16f, 0.9f);
-			glUniform3f(h_uMatSpec, 0.14f, 0.2f, 0.8f);
-			glUniform1f(h_uMatShine, 120.0f);
+			glUniform3f(prog->getUniform("UaColor"), 0.02f, 0.04f, 0.2f);
+			glUniform3f(prog->getUniform("UdColor"), 0.0f, 0.16f, 0.9f);
+			glUniform3f(prog->getUniform("UsColor"), 0.14f, 0.2f, 0.8f);
+			glUniform1f(prog->getUniform("Ushine"), 120.0f);
 			break;
 		case 1: // flat grey
-			glUniform3f(h_uMatAmb, 0.13f, 0.13f, 0.14f);
-			glUniform3f(h_uMatDif, 0.3f, 0.3f, 0.4f);
-			glUniform3f(h_uMatSpec, 0.3f, 0.3f, 0.4f);
-			glUniform1f(h_uMatShine, 4.0f);
+			glUniform3f(prog->getUniform("UaColor"), 0.13f, 0.13f, 0.14f);
+			glUniform3f(prog->getUniform("UdColor"), 0.3f, 0.3f, 0.4f);
+			glUniform3f(prog->getUniform("UsColor"), 0.3f, 0.3f, 0.4f);
+			glUniform1f(prog->getUniform("Ushine"), 4.0f);
 			break;
 		case 2: //brass
-			glUniform3f(h_uMatAmb, 0.3294f, 0.2235f, 0.02745f);
-			glUniform3f(h_uMatDif, 0.7804f, 0.5686f, 0.11373f);
-			glUniform3f(h_uMatSpec, 0.9922f, 0.941176f, 0.80784f);
-			glUniform1f(h_uMatShine, 27.9f);
+			glUniform3f(prog->getUniform("UaColor"), 0.3294f, 0.2235f, 0.02745f);
+			glUniform3f(prog->getUniform("UdColor"), 0.7804f, 0.5686f, 0.11373f);
+			glUniform3f(prog->getUniform("UsColor"), 0.9922f, 0.941176f, 0.80784f);
+			glUniform1f(prog->getUniform("Ushine"), 27.9f);
 			break;
 		case 3: //copper
-			glUniform3f(h_uMatAmb, 0.1913f, 0.0735f, 0.0225f);
-			glUniform3f(h_uMatDif, 0.7038f, 0.27048f, 0.0828f);
-			glUniform3f(h_uMatSpec, 0.257f, 0.1376f, 0.08601f);
-			glUniform1f(h_uMatShine, 12.8f);
+			glUniform3f(prog->getUniform("UaColor"), 0.1913f, 0.0735f, 0.0225f);
+			glUniform3f(prog->getUniform("UdColor"), 0.7038f, 0.27048f, 0.0828f);
+			glUniform3f(prog->getUniform("UsColor"), 0.257f, 0.1376f, 0.08601f);
+			glUniform1f(prog->getUniform("Ushine"), 12.8f);
 			break;
 		case 4: // flat grey
-			glUniform3f(h_uMatAmb, 0.13f, 0.13f, 0.14f);
-			glUniform3f(h_uMatDif, 0.3f, 0.3f, 0.4f);
-			glUniform3f(h_uMatSpec, 0.3f, 0.3f, 0.4f);
-			glUniform1f(h_uMatShine, 4.0f);
+			glUniform3f(prog->getUniform("UaColor"), 0.13f, 0.13f, 0.14f);
+			glUniform3f(prog->getUniform("UdColor"), 0.3f, 0.3f, 0.4f);
+			glUniform3f(prog->getUniform("UsColor"), 0.3f, 0.3f, 0.4f);
+			glUniform1f(prog->getUniform("Ushine"), 4.0f);
 			break;
 		case 5: //shadow
-			glUniform3f(h_uMatAmb, 0.12f, 0.12f, 0.12f);
-			glUniform3f(h_uMatDif, 0.0f, 0.0f, 0.0f);
-			glUniform3f(h_uMatSpec, 0.0f, 0.0f, 0.0f);
-			glUniform1f(h_uMatShine, 0);
+			glUniform3f(prog->getUniform("UaColor"), 0.12f, 0.12f, 0.12f);
+			glUniform3f(prog->getUniform("UdColor"), 0.0f, 0.0f, 0.0f);
+			glUniform3f(prog->getUniform("UsColor"), 0.0f, 0.0f, 0.0f);
+			glUniform1f(prog->getUniform("Ushine"), 0);
 			break;
 		case 6: //gold
-			glUniform3f(h_uMatAmb, 0.09f, 0.07f, 0.08f);
-			glUniform3f(h_uMatDif, 0.91f, 0.2f, 0.91f);
-			glUniform3f(h_uMatSpec, 1.0f, 0.7f, 1.0f);
-			glUniform1f(h_uMatShine, 100.0f);
+			glUniform3f(prog->getUniform("UaColor"), 0.09f, 0.07f, 0.08f);
+			glUniform3f(prog->getUniform("UdColor"), 0.91f, 0.2f, 0.91f);
+			glUniform3f(prog->getUniform("UsColor"), 1.0f, 0.7f, 1.0f);
+			glUniform1f(prog->getUniform("Ushine"), 100.0f);
 			break;
 		case 7: //green
-			glUniform3f(h_uMatAmb, 0.0f, 0.07f, 0.0f);
-			glUniform3f(h_uMatDif, 0.1f, 0.91f, 0.3f);
-			glUniform3f(h_uMatSpec, 0, 0, 0);
-			glUniform1f(h_uMatShine, 0.0f);
+			glUniform3f(prog->getUniform("UaColor"), 0.0f, 0.07f, 0.0f);
+			glUniform3f(prog->getUniform("UdColor"), 0.1f, 0.91f, 0.3f);
+			glUniform3f(prog->getUniform("UsColor"), 0, 0, 0);
+			glUniform1f(prog->getUniform("Ushine"), 0.0f);
 			break;
 		}
 	}
@@ -194,28 +210,28 @@ public:
 		glfwGetFramebufferSize(windowManager->getHandle(), &width, &height);
 
 		mat4 Projection = perspective(radians(50.0f), (float) width / height, 0.1f, 100.f);
-		CHECKED_GL_CALL(glUniformMatrix4fv(h_uProjMatrix, 1, GL_FALSE, glm::value_ptr(Projection)));
+		CHECKED_GL_CALL(glUniformMatrix4fv(prog->getUniform("uProjMatrix"), 1, GL_FALSE, glm::value_ptr(Projection)));
 		return Projection;
 	}
 
 	/* top down views using ortho */
 	mat4 SetOrthoMatrix() {
 		mat4 ortho = glm::ortho(-15.0f, 15.0f, -15.0f, 15.0f, 2.1f, 100.f);
-		CHECKED_GL_CALL(glUniformMatrix4fv(h_uProjMatrix, 1, GL_FALSE, glm::value_ptr(ortho)));
+		CHECKED_GL_CALL(glUniformMatrix4fv(prog->getUniform("uProjMatrix"), 1, GL_FALSE, glm::value_ptr(ortho)));
 		return ortho;
 	}
 
 	/* camera controls - this is the camera for the top down view */
 	mat4 SetTopView() {
 		mat4 Cam = lookAt(g_eye + vec3(0, 8, 0), g_eye, g_lookAt - g_eye);
-		CHECKED_GL_CALL(glUniformMatrix4fv(h_uViewMatrix, 1, GL_FALSE, glm::value_ptr(Cam)));
+		CHECKED_GL_CALL(glUniformMatrix4fv(prog->getUniform("uViewMatrix"), 1, GL_FALSE, glm::value_ptr(Cam)));
 		return Cam;
 	}
 
 	/*normal game camera */
 	mat4 SetView() {
 		mat4 Cam = lookAt(g_eye, g_lookAt, vec3(0, 1, 0));
-		CHECKED_GL_CALL(glUniformMatrix4fv(h_uViewMatrix, 1, GL_FALSE, glm::value_ptr(Cam)));
+		CHECKED_GL_CALL(glUniformMatrix4fv(prog->getUniform("uViewMatrix"), 1, GL_FALSE, glm::value_ptr(Cam)));
 		return Cam;
 	}
 
@@ -226,12 +242,12 @@ public:
 		mat4 RotateX = rotate(glm::mat4(1.0f), rotX, glm::vec3(1, 0, 0));
 		mat4 Sc = scale(glm::mat4(1.0f), sc);
 		mat4 com = Trans * RotateY*Sc*RotateX;
-		CHECKED_GL_CALL(glUniformMatrix4fv(h_uModelMatrix, 1, GL_FALSE, glm::value_ptr(com)));
+		CHECKED_GL_CALL(glUniformMatrix4fv(prog->getUniform("uModelMatrix"), 1, GL_FALSE, glm::value_ptr(com)));
 		return com;
 	}
 
 	void SetModel(mat4 m) {
-		CHECKED_GL_CALL(glUniformMatrix4fv(h_uModelMatrix, 1, GL_FALSE, glm::value_ptr(m)));
+		CHECKED_GL_CALL(glUniformMatrix4fv(prog->getUniform("uModelMatrix"), 1, GL_FALSE, glm::value_ptr(m)));
 	}
 
 	//Given a vector of shapes which has already been read from an obj file
@@ -300,14 +316,14 @@ public:
 	void drawSnowman(mat4 moveModel, int i) {
 
 		// Enable and bind position array for drawing
-		GLSL::enableVertexAttribArray(h_aPosition);
+		GLSL::enableVertexAttribArray(0);
 		glBindBuffer(GL_ARRAY_BUFFER, posBufObjS);
-		glVertexAttribPointer(h_aPosition, 3, GL_FLOAT, GL_FALSE, 0, 0);
+		glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, 0);
 
 		// Enable and bind normal array for drawing
-		GLSL::enableVertexAttribArray(h_aNormal);
+		GLSL::enableVertexAttribArray(1);
 		glBindBuffer(GL_ARRAY_BUFFER, norBufObjS);
-		glVertexAttribPointer(h_aNormal, 3, GL_FLOAT, GL_FALSE, 0, 0);
+		glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 0, 0);
 
 		// Bind index array for drawing
 		int nIndices = (int) sphere[0].mesh.indices.size();
@@ -379,8 +395,8 @@ public:
 		SetModel(moveModel*com);
 		CHECKED_GL_CALL(glDrawElements(GL_TRIANGLES, nIndices, GL_UNSIGNED_INT, 0));
 
-		GLSL::disableVertexAttribArray(h_aPosition);
-		GLSL::disableVertexAttribArray(h_aNormal);
+		GLSL::disableVertexAttribArray(0);
+		GLSL::disableVertexAttribArray(1);
 		glBindBuffer(GL_ARRAY_BUFFER, 0);
 		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 
@@ -573,73 +589,6 @@ public:
 		initGround();
 	}
 
-	bool installShaders(const string &vShaderName, const string &fShaderName)
-	{
-		GLint rc;
-
-		// Create shader handles
-		GLuint VS = glCreateShader(GL_VERTEX_SHADER);
-		GLuint FS = glCreateShader(GL_FRAGMENT_SHADER);
-
-		// Read shader sources
-		std::string vShaderString = readFileAsString(vShaderName);
-		std::string fShaderString = readFileAsString(fShaderName);
-		const char *vshader = vShaderString.c_str();
-		const char *fshader = fShaderString.c_str();
-		CHECKED_GL_CALL(glShaderSource(VS, 1, &vshader, NULL));
-		CHECKED_GL_CALL(glShaderSource(FS, 1, &fshader, NULL));
-
-		// Compile vertex shader
-		glCompileShader(VS);
-		std::cout << "just compiled the v shader" << std::endl;
-		glGetShaderiv(VS, GL_COMPILE_STATUS, &rc);
-		GLSL::printShaderInfoLog(VS);
-		if (!rc) {
-			printf("Error compiling vertex shader %s\n", vShaderName.c_str());
-			return false;
-		}
-
-		// Compile fragment shader
-		glCompileShader(FS);
-		std::cout << "just compiled the f shader" << std::endl;
-		glGetShaderiv(FS, GL_COMPILE_STATUS, &rc);
-		GLSL::printShaderInfoLog(FS);
-		if (!rc) {
-			printf("Error compiling fragment shader %s\n", fShaderName.c_str());
-			return false;
-		}
-
-		// Create the program and link
-		ShadeProg = glCreateProgram();
-		CHECKED_GL_CALL(glAttachShader(ShadeProg, VS));
-		CHECKED_GL_CALL(glAttachShader(ShadeProg, FS));
-		CHECKED_GL_CALL(glLinkProgram(ShadeProg));
-		std::cout << "just linked the shaders" << std::endl;
-
-		glGetProgramiv(ShadeProg, GL_LINK_STATUS, &rc);
-		GLSL::printProgramInfoLog(ShadeProg);
-		if (!rc) {
-			printf("Error linking shaders %s and %s\n", vShaderName.c_str(), fShaderName.c_str());
-			return false;
-		}
-
-		/* get handles to attribute data */
-		h_aPosition = GLSL::getAttribLocation(ShadeProg, "aPosition");
-		h_aNormal = GLSL::getAttribLocation(ShadeProg, "aNormal");
-		h_uProjMatrix = GLSL::getUniformLocation(ShadeProg, "uProjMatrix");
-		h_uViewMatrix = GLSL::getUniformLocation(ShadeProg, "uViewMatrix");
-		h_uModelMatrix = GLSL::getUniformLocation(ShadeProg, "uModelMatrix");
-		h_uLightPos = GLSL::getUniformLocation(ShadeProg, "uLightPos");
-		h_uMatAmb = GLSL::getUniformLocation(ShadeProg, "UaColor");
-		h_uMatDif = GLSL::getUniformLocation(ShadeProg, "UdColor");
-		h_uMatSpec = GLSL::getUniformLocation(ShadeProg, "UsColor");
-		h_uMatShine = GLSL::getUniformLocation(ShadeProg, "Ushine");
-
-		assert(glGetError() == GL_NO_ERROR);
-		return true;
-	}
-
-
 	/* VFC code starts here TODO - start here and fill in these functions!!!*/
 	vec4 Left, Right, Bottom, Top, Near, Far;
 	vec4 planes[6];
@@ -733,13 +682,13 @@ public:
 			if (!ViewFrustCull(g_transN[i], -1.25)) {
 				//draw the mesh
 				// Enable and bind position array for drawing
-				GLSL::enableVertexAttribArray(h_aPosition);
+				GLSL::enableVertexAttribArray(0);
 				CHECKED_GL_CALL(glBindBuffer(GL_ARRAY_BUFFER, posBufObjB));
-				CHECKED_GL_CALL(glVertexAttribPointer(h_aPosition, 3, GL_FLOAT, GL_FALSE, 0, 0));
+				CHECKED_GL_CALL(glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, 0));
 				// Enable and bind normal array for drawing
-				GLSL::enableVertexAttribArray(h_aNormal);
+				GLSL::enableVertexAttribArray(1);
 				CHECKED_GL_CALL(glBindBuffer(GL_ARRAY_BUFFER, norBufObjB));
-				CHECKED_GL_CALL(glVertexAttribPointer(h_aNormal, 3, GL_FLOAT, GL_FALSE, 0, 0));
+				CHECKED_GL_CALL(glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 0, 0));
 				// Bind index array for drawing
 				nIndices = (int) nefer[0].mesh.indices.size();
 				CHECKED_GL_CALL(glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, indBufObjB));
@@ -759,8 +708,8 @@ public:
 				SetModel(vec3(g_transN[i].x + 0.2, g_transN[i].y - 1, g_transN[i].z + 0.2), radians(g_rotN[i]), radians(-90.0f), vec3(1, .01, 1));
 				CHECKED_GL_CALL(glDrawElements(GL_TRIANGLES, nIndices, GL_UNSIGNED_INT, 0));
 
-				GLSL::disableVertexAttribArray(h_aPosition);
-				GLSL::disableVertexAttribArray(h_aNormal);
+				GLSL::disableVertexAttribArray(0);
+				GLSL::disableVertexAttribArray(1);
 				glBindBuffer(GL_ARRAY_BUFFER, 0);
 				glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 			}
@@ -779,17 +728,17 @@ public:
 		SetMaterial(PmatID);
 		SetModel(vec3(0), radians(0.0f), radians(0.0f), vec3(1));
 
-		glEnableVertexAttribArray(h_aPosition);
+		glEnableVertexAttribArray(0);
 		glBindBuffer(GL_ARRAY_BUFFER, posBufObjG);
-		glVertexAttribPointer(h_aPosition, 3, GL_FLOAT, GL_FALSE, 0, (void*) 0);
-		GLSL::enableVertexAttribArray(h_aNormal);
+		glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, (void*) 0);
+		GLSL::enableVertexAttribArray(1);
 		glBindBuffer(GL_ARRAY_BUFFER, norBufObjG);
-		glVertexAttribPointer(h_aNormal, 3, GL_FLOAT, GL_FALSE, 0, 0);
+		glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 0, 0);
 
 		CHECKED_GL_CALL(glDrawArrays(GL_TRIANGLES, 0, 6));
 
-		GLSL::disableVertexAttribArray(h_aPosition);
-		GLSL::disableVertexAttribArray(h_aNormal);
+		GLSL::disableVertexAttribArray(0);
+		GLSL::disableVertexAttribArray(1);
 		CHECKED_GL_CALL(glBindBuffer(GL_ARRAY_BUFFER, 0));
 
 	}
@@ -805,8 +754,8 @@ public:
 		CHECKED_GL_CALL(glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT));
 
 		// Use our GLSL program
-		glUseProgram(ShadeProg);
-		glUniform3f(h_uLightPos, g_light.x, g_light.y, g_light.z);
+		prog->bind();
+		glUniform3f(prog->getUniform("uLightPos"), g_light.x, g_light.y, g_light.z);
 
 		//draw the scene from the game camera with culling enabled
 		mat4 P = SetProjectionMatrix();
@@ -830,7 +779,8 @@ public:
 		SetTopView();
 		CULL = 1;
 		drawScene(7);
-		CHECKED_GL_CALL(glUseProgram(0));
+
+		prog->unbind();
 	}
 
 

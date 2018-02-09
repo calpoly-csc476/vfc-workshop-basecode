@@ -1,7 +1,7 @@
-#version 120
+#version 330
 
-attribute vec4 aPosition;
-attribute vec3 aNormal;
+layout (location = 0) in vec4 aPosition;
+layout (location = 1) in vec3 aNormal;
 
 uniform mat4 uProjMatrix;
 uniform mat4 uViewMatrix;
@@ -12,7 +12,7 @@ uniform vec3 UdColor;
 uniform vec3 UsColor;
 uniform float Ushine;
 
-varying vec3 vNormal, vLight, vView;
+out vec3 vNormal, vLight, vView;
 
 void main() {
   vec4 vPosition;
@@ -25,16 +25,16 @@ void main() {
 
   /* First model transforms */
   vPosition = uModelMatrix*aPosition;
- 
-  //compute the normal in camera space 
+
+  //compute the normal in camera space
   tNorm = vec3(uViewMatrix*uModelMatrix*vec4(normalize(aNormal), 0));
 
   //compute the point in camera space for specular
   vPosition = uViewMatrix*vPosition;
-  //compute the light in camera 
+  //compute the light in camera
   light = uViewMatrix*vec4(uLightPos, 1) - vPosition;
   light = normalize(light);
-  
+
   //move the point into screen space
   gl_Position = uProjMatrix* vPosition;
 

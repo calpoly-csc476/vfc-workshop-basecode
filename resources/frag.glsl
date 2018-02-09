@@ -1,13 +1,15 @@
-#version 120
+#version 330
 uniform vec3 UaColor;
 uniform vec3 UdColor;
 uniform vec3 UsColor;
 uniform float Ushine;
 
-varying vec3 vCol;
-varying vec3 vNormal;
-varying vec3 vLight;
-varying vec3 vView;
+in vec3 vCol;
+in vec3 vNormal;
+in vec3 vLight;
+in vec3 vView;
+
+out vec4 color;
 
 void main() {
 
@@ -20,5 +22,5 @@ void main() {
   Half = Light+View;
   Spec = pow(clamp(dot(normalize(Half), Norm), 0.0, 1.0), Ushine)*UsColor;
   Diffuse = clamp(dot(Norm, Light), 0.0, 1.0)*UdColor;
-  gl_FragColor = vec4((Diffuse + Spec + UaColor), 1);
+  color = vec4((Diffuse + Spec + UaColor), 1);
 }
