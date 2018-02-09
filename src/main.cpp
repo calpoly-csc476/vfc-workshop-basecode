@@ -95,12 +95,6 @@ public:
 	glm::vec3 g_light = glm::vec3(2, 6, 6);
 	float updateDir = 0.5;
 
-	//camera control - you can ignore - what matters is eye location and view matrix
-	float g_phi, g_theta;
-	float g_Camtrans = -2.5;
-	vec3 view = vec3(0, 0, 1);
-	vec3 strafe = vec3(1, 0, 0);
-	vec3 g_eye = vec3(0, 1, 0);
 	vec3 g_lookAt = vec3(0, 1, -1);
 
 	//transforms on objects - ugly as its frankenstein of two example codes
@@ -223,14 +217,15 @@ public:
 
 	/* camera controls - this is the camera for the top down view */
 	mat4 SetTopView() {
-		mat4 Cam = lookAt(g_eye + vec3(0, 8, 0), g_eye, g_lookAt - g_eye);
+		mat4 Cam = lookAt(cameraPos + vec3(0, 8, 0), cameraPos, g_lookAt - cameraPos);
 		CHECKED_GL_CALL(glUniformMatrix4fv(prog->getUniform("uViewMatrix"), 1, GL_FALSE, glm::value_ptr(Cam)));
 		return Cam;
 	}
 
 	/*normal game camera */
-	mat4 SetView() {
-		mat4 Cam = lookAt(g_eye, g_lookAt, vec3(0, 1, 0));
+	mat4 SetView()
+	{
+		mat4 Cam = lookAt(cameraPos, g_lookAt, vec3(0, 1, 0));
 		CHECKED_GL_CALL(glUniformMatrix4fv(prog->getUniform("uViewMatrix"), 1, GL_FALSE, glm::value_ptr(Cam)));
 		return Cam;
 	}
@@ -582,8 +577,6 @@ public:
 			g_ang[i] = 0;
 		}
 
-		g_phi = 0;
-		g_theta = -90;
 		initNefer(nefer);
 		initSnow(sphere);
 		initGround();
@@ -743,7 +736,30 @@ public:
 
 	}
 
-	void render() {
+	float t0 = 0;
+
+	void render()
+	{
+
+		float t1 = (float) glfwGetTime();
+
+		float const dT = (t1 - t0);
+		t0 = t1;
+
+		glm::vec3 up = glm::vec3(0, 1, 0);
+		glm::vec3 forward = glm::vec3(cos(cTheta) * cos(cPhi), sin(cPhi), sin(cTheta) * cos(cPhi));
+		glm::vec3 right = glm::cross(forward, up);
+
+		if (moveForward)
+			cameraPos += forward * cameraMoveSpeed * dT;
+		if (moveBack)
+			cameraPos -= forward * cameraMoveSpeed * dT;
+		if (moveLeft)
+			cameraPos -= right * cameraMoveSpeed * dT;
+		if (moveRight)
+			cameraPos += right * cameraMoveSpeed * dT;
+
+		g_lookAt = cameraPos + forward;
 
 		// Get current frame buffer size.
 		int width, height;
@@ -784,66 +800,95 @@ public:
 	}
 
 
-	void resizeCallback(GLFWwindow* window, int w, int h) {
+	void resizeCallback(GLFWwindow* window, int w, int h)
+	{
 
 	}
 
-	void mouseCallback(GLFWwindow* window, int but, int action, int mods) {
+	float cTheta = 0;
+	float cPhi = 0;
+	bool mouseDown = false;
 
-		cout << "use two finger mouse scroll" << endl;
+	double lastX = 0;
+	double lastY = 0;
+	float cameraRotateSpeed = 0.005f;
+
+	void mouseCallback(GLFWwindow* window, int but, int action, int mods)
+	{
+		if (action == GLFW_PRESS)
+		{
+			mouseDown = true;
+		}
+
+		if (action == GLFW_RELEASE)
+		{
+			mouseDown = false;
+		}
 	}
 
 	void cursorPosCallback(GLFWwindow* window, double xpos, double ypos)
 	{
+		if (mouseDown)
+		{
+			cTheta += (float) (xpos - lastX) * cameraRotateSpeed;
+			cPhi -= (float) (ypos - lastY) * cameraRotateSpeed;
+		}
+
+		lastX = xpos;
+		lastY = ypos;
 	}
 
 	/* much of the camera is here */
 	void scrollCallback(GLFWwindow* window, double deltaX, double deltaY) {
-		vec3 diff, newV;
-		//cout << "xDel + yDel " << deltaX << " " << deltaY << endl;
-		g_theta += (float) deltaX;
-		g_phi += (float) deltaY;
-		newV.x = cosf(g_phi*(3.14f / 180.0f))*cosf(g_theta*(3.14f / 180.0f));
-		newV.y = -1.0f*sinf(g_phi*(3.14f / 180.0f));
-		newV.z = 1.0f*cosf(g_phi*(3.14f / 180.0f))*cosf((90.0f - g_theta)*(3.14f / 180.0f));
-		diff.x = (g_lookAt.x - g_eye.x) - newV.x;
-		diff.y = (g_lookAt.y - g_eye.y) - newV.y;
-		diff.z = (g_lookAt.z - g_eye.z) - newV.z;
-		g_lookAt.x = g_lookAt.x - diff.x;
-		g_lookAt.y = g_lookAt.y - diff.y;
-		g_lookAt.z = g_lookAt.z - diff.z;
-		view = g_eye - g_lookAt;
-		strafe = cross(vec3(0, 1, 0), view);
 	}
+
+	bool moveForward = false;
+	bool moveBack = false;
+	bool moveLeft = false;
+	bool moveRight = false;
+	glm::vec3 cameraPos;
+	float cameraMoveSpeed = 12.0f;
 
 	void keyCallback(GLFWwindow* window, int key, int scancode, int action, int mods)
 	{
 		float speed = 0.2f;
 
-		if (key == GLFW_KEY_A && action == GLFW_PRESS) {
-			g_eye -= speed * strafe;
-			g_lookAt -= speed * strafe;
+		switch (key)
+		{
+		case GLFW_KEY_W:
+			moveForward = (action != GLFW_RELEASE);
+			break;
+		case GLFW_KEY_S:
+			moveBack = (action != GLFW_RELEASE);
+			break;
+		case GLFW_KEY_A:
+			moveLeft = (action != GLFW_RELEASE);
+			break;
+		case GLFW_KEY_D:
+			moveRight = (action != GLFW_RELEASE);
+			break;
+
+		case GLFW_KEY_1:
+			cameraMoveSpeed = 1.f;
+			break;
+		case GLFW_KEY_2:
+			cameraMoveSpeed = 3.f;
+			break;
+		case GLFW_KEY_3:
+			cameraMoveSpeed = 6.f;
+			break;
+		case GLFW_KEY_4:
+			cameraMoveSpeed = 12.f;
+			break;
+		case GLFW_KEY_5:
+			cameraMoveSpeed = 24.f;
+			break;
 		}
-		if (key == GLFW_KEY_D && action == GLFW_PRESS) {
-			g_eye += speed * strafe;
-			g_lookAt += speed * strafe;
-		}
-		if (key == GLFW_KEY_W && action == GLFW_PRESS) {
-			g_eye -= speed * view;
-			g_lookAt -= speed * view;
-		}
-		if (key == GLFW_KEY_S && action == GLFW_PRESS) {
-			g_eye += speed * view;
-			g_lookAt += speed * view;
-		}
+
 		if (key == GLFW_KEY_Q && action == GLFW_PRESS)
 			g_light.x += 0.25;
 		if (key == GLFW_KEY_E && action == GLFW_PRESS)
 			g_light.x -= 0.25;
-		if (key == GLFW_KEY_M && action == GLFW_PRESS)
-			g_Camtrans += 0.25;
-		if (key == GLFW_KEY_N && action == GLFW_PRESS)
-			g_Camtrans -= 0.25;
 	}
 
 };
