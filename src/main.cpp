@@ -838,7 +838,6 @@ public:
 		lastY = ypos;
 	}
 
-	/* much of the camera is here */
 	void scrollCallback(GLFWwindow* window, double deltaX, double deltaY) {
 	}
 
