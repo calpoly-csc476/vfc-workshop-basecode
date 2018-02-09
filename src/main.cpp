@@ -102,6 +102,7 @@ public:
 	glm::vec3 cameraPos;
 	float cameraMoveSpeed = 12.0f;
 	float topCameraSize = 15.f;
+	int topCameraPixels = 300;
 
 
 	void init(const std::string& resourceDirectory)
@@ -579,9 +580,19 @@ public:
 		CULL = 1;
 		drawScene(0);
 
+		if (topCameraPixels < 50)
+		{
+			topCameraPixels = 50;
+		}
+
+		if (topCameraPixels > height / 2)
+		{
+			topCameraPixels = height / 2;
+		}
+
 		/* draw the complete scene from a top down camera */
 		CHECKED_GL_CALL(glClear(GL_DEPTH_BUFFER_BIT));
-		glViewport(0, 0, 300, 300);
+		glViewport(0, 0, topCameraPixels, topCameraPixels);
 		SetOrthoMatrix(topCameraSize);
 		SetTopView();
 		CULL = 0;
@@ -589,7 +600,7 @@ public:
 
 		/* draw the culled scene from a top down camera */
 		CHECKED_GL_CALL(glClear(GL_DEPTH_BUFFER_BIT));
-		glViewport(0, height - 300, 300, 300);
+		glViewport(0, height - topCameraPixels, topCameraPixels, topCameraPixels);
 		SetOrthoMatrix(topCameraSize);
 		SetTopView();
 		CULL = 1;
@@ -655,22 +666,35 @@ public:
 		case GLFW_KEY_E:
 			moveDown = (action != GLFW_RELEASE);
 			break;
+		};
 
-		case GLFW_KEY_1:
-			cameraMoveSpeed = 1.f;
-			break;
-		case GLFW_KEY_2:
-			cameraMoveSpeed = 3.f;
-			break;
-		case GLFW_KEY_3:
-			cameraMoveSpeed = 6.f;
-			break;
-		case GLFW_KEY_4:
-			cameraMoveSpeed = 12.f;
-			break;
-		case GLFW_KEY_5:
-			cameraMoveSpeed = 24.f;
-			break;
+		if (action == GLFW_RELEASE)
+		{
+			switch (key)
+			{
+			case GLFW_KEY_LEFT_BRACKET:
+				topCameraPixels -= 50;
+				break;
+			case GLFW_KEY_RIGHT_BRACKET:
+				topCameraPixels += 50;
+				break;
+
+			case GLFW_KEY_1:
+				cameraMoveSpeed = 1.f;
+				break;
+			case GLFW_KEY_2:
+				cameraMoveSpeed = 3.f;
+				break;
+			case GLFW_KEY_3:
+				cameraMoveSpeed = 6.f;
+				break;
+			case GLFW_KEY_4:
+				cameraMoveSpeed = 12.f;
+				break;
+			case GLFW_KEY_5:
+				cameraMoveSpeed = 24.f;
+				break;
+			}
 		}
 
 		if (key == GLFW_KEY_Q && action == GLFW_PRESS)
